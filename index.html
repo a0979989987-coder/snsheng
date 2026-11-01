@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Snsheng</title>
-<meta name="description" content="Snsheng 的社群和作品：LINE 社群、Instagram、X、OX 篩選器、合成市場。">
-<meta name="theme-color" content="#ffffff">
+<meta name="description" content="Snsheng 的社群、作品和雙極交易法：LINE 社群、Instagram、Threads、YouTube、OX 篩選器、合成市場。">
+<meta name="theme-color" content="#fbf8f2">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Snsheng">
 <meta property="og:description" content="21 歲，做合約短線第四年。正在寫《雙極交易法》。">
@@ -16,350 +16,387 @@
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@1,500&family=Noto+Sans+TC:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@1,500&family=Noto+Sans+TC:wght@400;500&family=Noto+Serif+TC:wght@500;700&display=swap" rel="stylesheet">
 <style>
+  /* 顏色由 site.js 依「陽→陰」的進度設定 */
   :root {
-    --ink: #30343b;
-    --ink-2: #636b77;
-    --ink-3: #9aa1ab;
-    --line: #e1e6ec;
-    --gold: #8d712e;
-    --champagne-line: #d8bc83;
-    --card: rgba(255, 255, 255, .62);
-    --card-hover: rgba(255, 255, 255, .88);
-    --shadow: 0 8px 28px rgba(83, 97, 116, .08), inset 0 1px 0 #fff;
+    --bgA: #fbf8f2; --bgB: #eef2f7;
+    --fg: #30343b; --fg2: #636b77; --fg3: #9aa1ab;
+    --card: rgba(255, 255, 255, .62); --cardline: rgba(221, 225, 230, .9);
+    --gold: #8d712e; --glow: rgba(255, 255, 255, .9);
     --line-green: #06C755;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html { -webkit-text-size-adjust: 100%; }
   body {
-    min-height: 100vh;
-    background: #fff;
-    color: var(--ink);
-    font-family: "Noto Sans TC", -apple-system, BlinkMacSystemFont, "PingFang TC", "Microsoft JhengHei", "Segoe UI", sans-serif;
-    font-weight: 400;
-    -webkit-font-smoothing: antialiased;
-    -webkit-tap-highlight-color: transparent;
+    color: var(--fg);
+    font-family: "Noto Sans TC", -apple-system, BlinkMacSystemFont, "PingFang TC", "Microsoft JhengHei", sans-serif;
+    font-weight: 400; background: var(--bgA);
+    -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent;
+    overflow-x: hidden;
   }
   a { color: inherit; text-decoration: none; }
+  #bgfix { position: fixed; inset: 0; z-index: 0; background: linear-gradient(180deg, var(--bgA), var(--bgB)); }
+  #gl { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; display: block; }
+  #flash { position: fixed; inset: 0; z-index: 2; pointer-events: none; opacity: 0;
+    background: radial-gradient(circle at 50% 38%, rgba(240, 200, 110, .55), rgba(240, 200, 110, 0) 62%); }
+  main { position: relative; z-index: 3; }
 
-  /* 背景：白金底，上面是 story.js 畫的 3D 一鏡到底 */
-  .bg {
-    position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: 0;
-    background:
-      radial-gradient(120% 55% at 50% 0%, #f6eddc 0%, rgba(246, 237, 220, 0) 60%),
-      linear-gradient(180deg, #ffffff 0%, #f7f9fc 55%, #ecf1f8 100%);
+  /* 右上角：聲音、分享 */
+  .topbtns { position: fixed; z-index: 6; top: calc(14px + env(safe-area-inset-top)); right: 14px; display: flex; gap: 8px; }
+  .ibtn {
+    width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; cursor: pointer;
+    background: var(--card); border: 1px solid var(--cardline); color: var(--fg2);
+    -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); transition: transform .15s;
   }
-  .bg canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
-  #flash {
-    position: fixed; inset: 0; z-index: 0; pointer-events: none; opacity: 0;
-    background: radial-gradient(circle at 55% 30%, rgba(236, 200, 120, .5), rgba(236, 200, 120, 0) 60%);
-  }
-  /* 突破時掃過整個畫面的金光 */
-  #sweep {
-    position: fixed; top: 0; bottom: 0; left: 0; width: 55vw; z-index: 0; pointer-events: none; opacity: 0;
-    background: linear-gradient(100deg, rgba(255, 236, 190, 0), rgba(255, 228, 165, .55) 50%, rgba(255, 236, 190, 0));
-    transform: translateX(-60vw) skewX(-12deg);
-  }
-  #sweep.go { animation: sweepGo 1s cubic-bezier(.2, .6, .3, 1) forwards; }
-  @keyframes sweepGo {
-    0% { opacity: .95; transform: translateX(-60vw) skewX(-12deg); }
-    100% { opacity: 0; transform: translateX(150vw) skewX(-12deg); }
-  }
-  .avatar { cursor: pointer; }
+  .ibtn:active { transform: scale(.92); }
+  .ibtn svg { width: 18px; height: 18px; }
+  .ibtn .off { display: none; }
+  .ibtn.muted .on { display: none; }
+  .ibtn.muted .off { display: block; }
 
-  .wrap {
-    position: relative; z-index: 1;
-    max-width: 460px; margin: 0 auto;
-    padding: calc(56px + env(safe-area-inset-top)) 20px calc(40px + env(safe-area-inset-bottom));
+  /* ---------- 第一頁 ---------- */
+  .hero {
+    min-height: 100svh; display: flex; flex-direction: column; align-items: center; text-align: center;
+    padding: calc(52px + env(safe-area-inset-top)) 20px calc(24px + env(safe-area-inset-bottom));
   }
-
-  /* 右上分享 */
-  .share {
-    position: absolute; top: calc(16px + env(safe-area-inset-top)); right: 16px;
-    width: 40px; height: 40px; border-radius: 50%;
-    display: grid; place-items: center;
-    background: var(--card); border: 1px solid var(--line); color: var(--ink-2);
-    box-shadow: var(--shadow);
-    cursor: pointer; transition: background .2s, color .2s, transform .15s;
-    -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
-  }
-  .share:hover { background: var(--card-hover); color: var(--ink); }
-  .share:active { transform: scale(.92); }
-  .share svg { width: 18px; height: 18px; }
-
-  /* 頭像 */
-  .hero { text-align: center; }
   .avatar {
-    position: relative; width: 116px; height: 116px; margin: 0 auto 18px;
-    border-radius: 50%; background: #F5D417;
-    box-shadow: 0 0 0 4px #fff, 0 0 0 5px rgba(216, 188, 131, .7), 0 18px 40px rgba(141, 113, 46, .22), 0 0 70px rgba(233, 214, 171, .9);
+    position: relative; width: 112px; height: 112px; border-radius: 50%; background: #F5D417; cursor: pointer;
+    box-shadow: 0 0 0 4px #fff, 0 0 0 5px rgba(216, 188, 131, .8), 0 16px 40px rgba(141, 113, 46, .25), 0 0 80px rgba(233, 200, 120, .55);
   }
   .avatar .clip { position: absolute; inset: 0; border-radius: 50%; overflow: hidden; }
-  .avatar img { width: 100%; height: 100%; object-fit: cover; display: block; transform: scale(1.04); }
+  .avatar img { width: 100%; height: 100%; object-fit: cover; transform: scale(1.04); display: block; }
   .avatar .ring {
     position: absolute; inset: -11px; border-radius: 50%;
-    background: conic-gradient(from 0deg, rgba(184, 145, 63, 0), rgba(184, 145, 63, .85) 22%, rgba(184, 145, 63, 0) 40%, rgba(127, 166, 214, 0) 55%, rgba(127, 166, 214, .8) 75%, rgba(127, 166, 214, 0) 92%);
+    background: conic-gradient(from 0deg, rgba(201, 158, 69, 0), rgba(201, 158, 69, .9) 22%, rgba(201, 158, 69, 0) 40%, rgba(127, 166, 214, 0) 55%, rgba(127, 166, 214, .8) 75%, rgba(127, 166, 214, 0) 92%);
     -webkit-mask: radial-gradient(closest-side, transparent calc(100% - 2px), #000 calc(100% - 1.5px));
             mask: radial-gradient(closest-side, transparent calc(100% - 2px), #000 calc(100% - 1.5px));
-    animation: spin 14s linear infinite;
+    animation: spin 12s linear infinite;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
+  .name { margin-top: 16px; font-family: "EB Garamond", Georgia, serif; font-style: italic; font-weight: 500; font-size: 40px; line-height: 1.1; text-shadow: 0 0 18px var(--glow); }
+  .sub { margin-top: 4px; font-size: 13px; letter-spacing: 4px; color: var(--gold); }
+  .bio { margin-top: 12px; font-size: 15px; line-height: 1.75; text-shadow: 0 0 12px var(--glow), 0 0 4px var(--glow); }
 
-  .name {
-    font-family: "EB Garamond", Georgia, "Times New Roman", serif;
-    font-style: italic; font-weight: 500;
-    font-size: 40px; letter-spacing: .5px; line-height: 1.1;
-    text-shadow: 0 0 18px #fff, 0 0 6px #fff;
+  .links { width: 100%; max-width: 440px; margin-top: 26px; }
+  .glabel { text-align: left; font-size: 12px; letter-spacing: 3px; color: var(--gold); margin: 0 4px 10px; text-shadow: 0 0 8px var(--glow); }
+  .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 18px; }
+  .tiles.three { grid-template-columns: repeat(3, 1fr); }
+  .tile {
+    position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+    aspect-ratio: 1 / 1; border-radius: 20px; padding: 8px 4px;
+    background: var(--card); border: 1px solid var(--cardline);
+    box-shadow: 0 8px 26px rgba(83, 97, 116, .08), inset 0 1px 0 rgba(255, 255, 255, .7);
+    -webkit-backdrop-filter: blur(12px) saturate(1.2); backdrop-filter: blur(12px) saturate(1.2);
+    transition: transform .15s, border-color .2s;
   }
-  .sub { margin-top: 6px; font-size: 13px; color: var(--gold); letter-spacing: 3px; text-shadow: 0 0 10px #fff; }
-  .bio { margin-top: 14px; font-size: 15px; line-height: 1.75; color: #3d424a; text-shadow: 0 0 12px #fff, 0 0 4px #fff; }
+  .tiles.three .tile { aspect-ratio: 1.15 / 1; }
+  .tile:hover { border-color: #d8bc83; }
+  .tile:active { transform: scale(.95); }
+  .tile svg { width: 26px; height: 26px; }
+  .tile span { font-size: 12px; letter-spacing: .3px; color: var(--fg); white-space: nowrap; }
+  .tile.line { background: linear-gradient(140deg, #fcf7ec, #efdfb9); border-color: #e2c98f; }
+  .tile.line svg { color: var(--line-green); }
+  .scrollhint { margin-top: auto; padding-top: 14px; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 12px; letter-spacing: 3px; color: var(--fg2); }
+  .scrollhint svg { width: 20px; height: 20px; animation: bob 1.6s ease-in-out infinite; }
+  @keyframes bob { 50% { transform: translateY(5px); } }
 
-  /* 頭像下的小圖示列 */
-  .quick { display: flex; justify-content: center; gap: 12px; margin-top: 22px; }
-  .quick a {
-    width: 44px; height: 44px; border-radius: 50%;
-    display: grid; place-items: center;
-    background: var(--card); border: 1px solid var(--line); color: var(--ink);
-    box-shadow: var(--shadow);
-    -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
-    transition: background .2s, transform .15s, border-color .2s;
+  /* ---------- 往下的每一段 ---------- */
+  .panel { position: relative; min-height: 100svh; display: flex; align-items: flex-end; padding: 54svh 20px 10svh; }
+  .story { position: relative; }
+  .sticky { position: sticky; top: 0; height: 100svh; display: flex; align-items: flex-end; padding: 0 20px calc(9svh + env(safe-area-inset-bottom)); }
+  .copy {
+    width: 100%; max-width: 460px; margin: 0 auto; padding: 22px 22px 24px; border-radius: 24px;
+    background: var(--card); border: 1px solid var(--cardline);
+    -webkit-backdrop-filter: blur(16px) saturate(1.2); backdrop-filter: blur(16px) saturate(1.2);
+    box-shadow: 0 14px 40px rgba(20, 30, 45, .1);
   }
-  .quick a:hover { background: var(--card-hover); border-color: var(--champagne-line); transform: translateY(-2px); }
-  .quick a:active { transform: scale(.92); }
-  .quick svg { width: 20px; height: 20px; }
+  .kicker { font-size: 12px; letter-spacing: 4px; color: var(--gold); margin-bottom: 8px; }
+  .copy h2 { font-family: "Noto Serif TC", serif; font-weight: 700; font-size: 26px; line-height: 1.35; margin-bottom: 10px; }
+  .copy p { font-size: 15px; line-height: 1.85; color: var(--fg); }
+  .copy p + p { margin-top: 8px; }
 
-  /* 欄位 */
-  section { margin-top: 34px; }
-  h2 {
-    font-size: 12px; font-weight: 500; letter-spacing: 3px;
-    color: var(--gold); margin: 0 4px 12px;
-    text-shadow: 0 0 10px #fff, 0 0 4px #fff;
-  }
-  .list { display: grid; gap: 10px; }
-  .card {
-    position: relative; display: flex; align-items: center; gap: 14px;
-    min-height: 72px; padding: 14px 16px 14px 14px;
-    border-radius: 18px;
-    background: var(--card); border: 1px solid rgba(221, 225, 230, .9);
-    box-shadow: var(--shadow);
-    -webkit-backdrop-filter: blur(14px) saturate(1.3); backdrop-filter: blur(14px) saturate(1.3);
-    transition: background .2s, border-color .2s, transform .15s;
-  }
-  a.card:hover { background: var(--card-hover); border-color: var(--champagne-line); }
-  a.card:active { transform: scale(.98); }
-  .ico {
-    flex: none; width: 44px; height: 44px; border-radius: 13px;
-    display: grid; place-items: center;
-    background: rgba(255, 255, 255, .85); border: 1px solid #e8ecf1; color: var(--ink);
-  }
-  .ico svg { width: 22px; height: 22px; }
-  .txt { flex: 1; min-width: 0; text-shadow: 0 0 6px rgba(255, 255, 255, .95), 0 0 2px #fff; }
-  .t { font-size: 16px; font-weight: 500; letter-spacing: .3px; display: flex; align-items: center; gap: 8px; }
-  .t small { font-size: 12px; font-weight: 400; color: var(--ink-3); letter-spacing: 0; }
-  .d { margin-top: 3px; font-size: 13px; line-height: 1.5; color: var(--ink-2); }
-  .go { flex: none; width: 18px; height: 18px; color: var(--ink-3); transition: transform .2s, color .2s; }
-  a.card:hover .go { transform: translate(2px, -2px); color: var(--gold); }
+  /* 會換的字幕 */
+  .caps { position: relative; min-height: 176px; }
+  .cap { position: absolute; left: 22px; right: 22px; top: 44px; opacity: 0; transform: translateY(10px); transition: opacity .45s, transform .45s; pointer-events: none; }
+  .cap.on { opacity: 1; transform: none; }
+  .cap b { display: block; font-family: "Noto Serif TC", serif; font-weight: 700; font-size: 24px; color: var(--gold); margin-bottom: 6px; letter-spacing: 1px; }
+  .cap span { display: block; font-size: 16px; line-height: 1.8; }
+  .cap small { display: block; margin-top: 8px; font-size: 12px; color: var(--fg3); }
 
-  /* LINE 社群：主要的那張，香檳金 */
-  .card.feature {
-    background: linear-gradient(135deg, #fcf7ec, #efdfb9);
-    border-color: #e2c98f; color: var(--ink);
-    box-shadow: 0 12px 32px rgba(141, 113, 46, .18), inset 0 1px 0 #fff;
-    overflow: hidden;
-  }
-  .card.feature:hover { background: linear-gradient(135deg, #fffaf0, #f3e5c4); }
-  .card.feature .ico { background: var(--line-green); border-color: transparent; color: #fff; }
-  .card.feature .d { color: #7a6a48; }
-  .card.feature .go { color: var(--gold); }
-  .card.feature::after {
-    content: ""; position: absolute; top: 0; bottom: 0; width: 60%; left: -80%;
-    background: linear-gradient(100deg, transparent, rgba(255, 255, 255, .75), transparent);
-    animation: sheen 5.5s ease-in-out 1.6s infinite;
-  }
-  @keyframes sheen { 0% { left: -80%; } 22%, 100% { left: 130%; } }
+  .tag { display: inline-block; margin-top: 12px; font-size: 12px; letter-spacing: 2px; padding: 4px 12px; border-radius: 99px; border: 1px solid #d8bc83; color: var(--gold); }
 
-  .tag {
-    font-size: 11px; font-weight: 500; letter-spacing: 1px;
-    padding: 3px 8px; border-radius: 99px;
-    border: 1px solid var(--champagne-line); color: var(--gold); background: rgba(246, 237, 220, .6);
-  }
+  /* 金句：粒子拼字，下面一行小字 */
+  .quote .copy { text-align: center; background: transparent; border-color: transparent; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .copy .qtext { font-family: "Noto Serif TC", serif; font-weight: 500; font-size: 19px; letter-spacing: 2px; text-shadow: 0 0 14px var(--glow); }
+  .copy .qsign { margin-top: 8px; font-family: "EB Garamond", serif; font-style: italic; font-size: 17px; color: var(--gold); }
+  .copy .qpre { font-size: 13px; color: var(--fg2); margin-bottom: 6px; }
 
-  footer { margin-top: 44px; text-align: center; color: var(--ink-3); font-size: 12px; letter-spacing: 1px; text-shadow: 0 0 8px #fff; }
-  footer img { width: 26px; height: 26px; display: block; margin: 0 auto 10px; border-radius: 50%; }
+  /* 截圖 */
+  .shots { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px; }
+  .shot { position: relative; display: block; border-radius: 16px; overflow: hidden; border: 1px solid var(--cardline); background: #000; }
+  .shot img { display: block; width: 100%; aspect-ratio: 9 / 15; object-fit: cover; object-position: top; }
+  .shot span { position: absolute; left: 8px; right: 8px; bottom: 8px; padding: 7px 10px; border-radius: 12px; font-size: 13px; text-align: center; color: #30343b; background: rgba(255, 255, 255, .9); }
+  .shot.single { max-width: 220px; margin-top: 14px; }
+
+  /* 影片牆 */
+  .copy.wide { max-width: 980px; }
+  .wall { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 14px; }
+  .film { position: relative; display: block; border-radius: 14px; overflow: hidden; background: #000; border: 1px solid var(--cardline); }
+  .film video { display: block; width: 100%; aspect-ratio: 9 / 16; object-fit: cover; }
+  .film span { position: absolute; left: 0; right: 0; bottom: 0; padding: 26px 10px 9px; font-size: 13px; color: #fff; background: linear-gradient(transparent, rgba(0, 0, 0, .75)); }
+  .more { display: inline-flex; margin-top: 14px; font-size: 14px; color: var(--gold); border-bottom: 1px solid currentColor; }
+
+  /* 結尾 */
+  .cta {
+    display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 16px; height: 56px; border-radius: 18px;
+    background: var(--line-green); color: #fff; font-size: 17px; font-weight: 500; letter-spacing: 1px;
+    box-shadow: 0 12px 30px rgba(6, 199, 85, .3);
+  }
+  .cta svg { width: 26px; height: 26px; }
+  .endicons { display: flex; justify-content: center; gap: 12px; margin-top: 18px; }
+  .endicons a { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; background: var(--card); border: 1px solid var(--cardline); }
+  .endicons svg { width: 20px; height: 20px; }
+  footer { margin-top: 22px; text-align: center; font-size: 12px; letter-spacing: 1px; color: var(--fg3); }
 
   .toast {
-    position: fixed; left: 50%; bottom: calc(28px + env(safe-area-inset-bottom)); z-index: 5;
-    transform: translate(-50%, 20px); opacity: 0;
-    padding: 10px 18px; border-radius: 99px;
-    background: var(--ink); color: #fff; font-size: 14px; font-weight: 500;
-    box-shadow: 0 10px 30px rgba(48, 52, 59, .25);
-    transition: opacity .25s, transform .25s; pointer-events: none;
+    position: fixed; left: 50%; bottom: calc(28px + env(safe-area-inset-bottom)); z-index: 9;
+    transform: translate(-50%, 20px); opacity: 0; padding: 10px 18px; border-radius: 99px;
+    background: #30343b; color: #fff; font-size: 14px; transition: opacity .25s, transform .25s; pointer-events: none;
   }
   .toast.on { opacity: 1; transform: translate(-50%, 0); }
 
-  /* 進場：一層一層浮上來 */
-  .rise { opacity: 0; transform: translateY(14px); animation: rise .7s cubic-bezier(.2, .7, .2, 1) forwards; }
+  .rise { opacity: 0; transform: translateY(14px); animation: rise .8s cubic-bezier(.2, .7, .2, 1) forwards; }
   @keyframes rise { to { opacity: 1; transform: none; } }
 
+  /* 電腦版：字在左、粒子在右 */
+  @media (min-width: 761px) {
+    .panel { align-items: center; padding: 12vh 6vw; }
+    .sticky { align-items: center; padding: 0 6vw; }
+    .panel .copy, .sticky .copy { margin: 0; max-width: 430px; }
+    .panel .copy.wide { max-width: 980px; margin: 0 auto; }
+    #films { align-items: flex-end; }
+    .wall { grid-template-columns: repeat(4, 1fr); }
+    .quote .copy { margin: 0 auto; align-self: flex-end; }
+  }
   @media (prefers-reduced-motion: reduce) {
-    .avatar .ring, .card.feature::after, #sweep.go { animation: none; }
+    .avatar .ring, .scrollhint svg { animation: none; }
     .rise { animation: none; opacity: 1; transform: none; }
   }
 </style>
 </head>
 <body>
 
-<div class="bg" aria-hidden="true"><canvas id="bg"></canvas></div>
+<div id="bgfix" aria-hidden="true"></div>
+<canvas id="gl" aria-hidden="true"></canvas>
 <div id="flash" aria-hidden="true"></div>
-<div id="sweep" aria-hidden="true"></div>
 
-<main class="wrap">
-  <button class="share" type="button" aria-label="分享這個網頁">
+<div class="topbtns">
+  <button class="ibtn" id="soundBtn" type="button" aria-label="聲音開關">
+    <svg class="on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4.2 4.2 0 0 1 0 6M18 6.5a7.6 7.6 0 0 1 0 11"/></svg>
+    <svg class="off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M16 9.5l5 5M21 9.5l-5 5"/></svg>
+  </button>
+  <button class="ibtn share" type="button" aria-label="分享這個網頁">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7.5 7.5 12 3l4.5 4.5"/><path d="M5 12v6.5A2.5 2.5 0 0 0 7.5 21h9a2.5 2.5 0 0 0 2.5-2.5V12"/></svg>
   </button>
+</div>
 
-  <header class="hero">
-    <div class="avatar rise"><span class="ring"></span><span class="clip"><img src="avatar.jpg" alt="Snsheng 頭像"></span></div>
+<main>
+  <!-- 第一頁：全部連結一次看到 -->
+  <header class="hero" data-shape="nebula">
+    <div class="avatar rise" role="button" tabindex="0" aria-label="點我"><span class="ring"></span><span class="clip"><img src="avatar.jpg" alt="Snsheng 頭像"></span></div>
     <h1 class="name rise">Snsheng</h1>
     <p class="sub rise">雙極交易法</p>
     <p class="bio rise">21 歲，做合約短線第四年。<br>正在寫一本書，叫《雙極交易法》。</p>
 
-    <nav class="quick rise" aria-label="社群">
-      <a href="#" data-key="line" aria-label="LINE 社群"><svg viewBox="0 0 24 24"><use href="#i-line"/></svg></a>
-      <a href="#" data-key="ig" aria-label="Instagram"><svg viewBox="0 0 24 24"><use href="#i-ig"/></svg></a>
-      <a href="#" data-key="x" aria-label="X"><svg viewBox="0 0 24 24"><use href="#i-x"/></svg></a>
-      <a href="#" data-key="threads" aria-label="Threads"><svg viewBox="0 0 24 24"><use href="#i-threads"/></svg></a>
-      <a href="#" data-key="yt" aria-label="YouTube"><svg viewBox="0 0 24 24"><use href="#i-yt"/></svg></a>
-    </nav>
+    <div class="links rise">
+      <p class="glabel">社群</p>
+      <div class="tiles">
+        <a class="tile line" href="#" data-key="line"><svg viewBox="0 0 24 24"><use href="#i-line"/></svg><span>LINE 社群</span></a>
+        <a class="tile" href="#" data-key="ig"><svg viewBox="0 0 24 24"><use href="#i-ig"/></svg><span>Instagram</span></a>
+        <a class="tile" href="#" data-key="threads"><svg viewBox="0 0 24 24"><use href="#i-threads"/></svg><span>Threads</span></a>
+        <a class="tile" href="#" data-key="yt"><svg viewBox="0 0 24 24"><use href="#i-yt"/></svg><span>YouTube</span></a>
+      </div>
+      <p class="glabel">我做的工具</p>
+      <div class="tiles three">
+        <a class="tile" href="https://oxpattern.com"><svg viewBox="0 0 24 24"><use href="#i-candle"/></svg><span>OX 台股</span></a>
+        <a class="tile" href="https://ox-crypto-independent.vercel.app"><svg viewBox="0 0 24 24"><use href="#i-coin"/></svg><span>OX 加密</span></a>
+        <a class="tile" href="https://merge-market.btcfly.chatgpt.site"><svg viewBox="0 0 24 24"><use href="#i-merge"/></svg><span>合成市場</span></a>
+      </div>
+    </div>
+    <a class="scrollhint rise" href="#me">往下滑<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></a>
   </header>
 
-  <section>
-    <h2 class="rise">找到我</h2>
-    <div class="list">
-      <a class="card feature rise" href="#" data-key="line">
-        <span class="ico"><svg viewBox="0 0 24 24"><use href="#i-line"/></svg></span>
-        <span class="txt"><span class="t">LINE 社群</span><span class="d">OX.Trading AI 討論群</span></span>
-        <svg class="go" viewBox="0 0 24 24"><use href="#i-go"/></svg>
-      </a>
-      <a class="card rise" href="#" data-key="ig">
-        <span class="ico"><svg viewBox="0 0 24 24"><use href="#i-ig"/></svg></span>
-        <span class="txt"><span class="t">Instagram <small>@btcfly</small></span><span class="d">影片和日常</span></span>
-        <svg class="go" viewBox="0 0 24 24"><use href="#i-go"/></svg>
-      </a>
-      <a class="card rise" href="#" data-key="x">
-        <span class="ico"><svg viewBox="0 0 24 24"><use href="#i-x"/></svg></span>
-        <span class="txt"><span class="t">X <small>推特</small></span><span class="d">看盤時隨手寫的</span></span>
-        <svg class="go" viewBox="0 0 24 24"><use href="#i-go"/></svg>
-      </a>
-      <a class="card rise" href="#" data-key="threads">
-        <span class="ico"><svg viewBox="0 0 24 24"><use href="#i-threads"/></svg></span>
-        <span class="txt"><span class="t">Threads <small>@ox.trading.ai</small></span><span class="d">想到什麼就寫什麼</span></span>
-        <svg class="go" viewBox="0 0 24 24"><use href="#i-go"/></svg>
-      </a>
-      <a class="card rise" href="#" data-key="yt">
-        <span class="ico"><svg viewBox="0 0 24 24"><use href="#i-yt"/></svg></span>
-        <span class="txt"><span class="t">YouTube <small>@snsheng</small></span><span class="d">完整的長片</span></span>
-        <svg class="go" viewBox="0 0 24 24"><use href="#i-go"/></svg>
-      </a>
+  <!-- 我是誰 -->
+  <section class="panel" id="me" data-shape="smiley">
+    <div class="copy">
+      <p class="kicker">我是誰</p>
+      <h2>Snsheng</h2>
+      <p>2005 年生，住台北。交易第四年，做加密貨幣合約短線，自己整理出一套雙極交易法。</p>
+      <p>2026 年 9 月開始用 AI。影片和 OX 篩選器都是我自己做的。</p>
     </div>
   </section>
 
-  <section>
-    <h2 class="rise">我做的東西</h2>
-    <div class="list">
-      <a class="card rise" href="https://oxpattern.com" data-key="ox-tw">
-        <span class="ico"><svg viewBox="0 0 24 24"><use href="#i-candle"/></svg></span>
-        <span class="txt"><span class="t">OX 台股 <small>我用 AI 寫的</small></span><span class="d">手畫一個型態，幫你找長得像的台股</span></span>
-        <svg class="go" viewBox="0 0 24 24"><use href="#i-go"/></svg>
-      </a>
-      <a class="card rise" href="https://ox-crypto-independent.vercel.app" data-key="ox-crypto">
-        <span class="ico"><svg viewBox="0 0 24 24"><use href="#i-coin"/></svg></span>
-        <span class="txt"><span class="t">OX 加密</span><span class="d">加密貨幣版，24 小時跟著行情跑</span></span>
-        <svg class="go" viewBox="0 0 24 24"><use href="#i-go"/></svg>
-      </a>
-      <a class="card rise" href="https://merge-market.btcfly.chatgpt.site" data-key="merge">
-        <span class="ico"><svg viewBox="0 0 24 24"><use href="#i-merge"/></svg></span>
-        <span class="txt"><span class="t">合成市場</span><span class="d">股票和加密幣的合成小遊戲</span></span>
-        <svg class="go" viewBox="0 0 24 24"><use href="#i-go"/></svg>
-      </a>
-    </div>
-  </section>
-
-  <section>
-    <h2 class="rise">正在寫</h2>
-    <div class="list">
-      <div class="card rise">
-        <span class="ico"><svg viewBox="0 0 24 24"><use href="#i-book"/></svg></span>
-        <span class="txt"><span class="t">《雙極交易法》<span class="tag">寫作中</span></span><span class="d">大約 550 頁，寫完會放在這裡</span></span>
+  <!-- 人生 K 線 -->
+  <section class="story" id="life" data-shape="life" style="height: 460vh">
+    <div class="sticky">
+      <div class="copy caps">
+        <p class="kicker">人生 K 線</p>
+        <div class="cap" data-at="0"><b>如果 Snsheng 是一檔股票</b><span>往下滑，K 線一根一根長出來。</span><small>走勢是示意，不是真實數字。</small></div>
+        <div class="cap" data-at="0.17"><b>2023/1/4</b><span>帶 5,000 元進幣圈。</span></div>
+        <div class="cap" data-at="0.35"><b>2023</b><span>創交易群，當群長。</span></div>
+        <div class="cap" data-at="0.52"><b>大回撤</b><span>一段很深的回撤。</span></div>
+        <div class="cap" data-at="0.7"><b>2026</b><span>用 AI 做出 OX。</span></div>
+        <div class="cap" data-at="0.92"><b>現在</b><span>開始寫《雙極交易法》。</span></div>
       </div>
     </div>
   </section>
 
-  <footer class="rise">
-    <img src="avatar.jpg" alt="">
-    © 2026 Snsheng
-  </footer>
+  <!-- 雙極交易法：天秤三態 -->
+  <section class="story" id="balance" data-shape="balance" style="height: 340vh">
+    <div class="sticky">
+      <div class="copy caps">
+        <p class="kicker">雙極交易法｜天秤三態</p>
+        <div class="cap" data-at="0"><b>極陽</b><span>每根 K 都突破前一根高點，低點從來沒被跌破。</span></div>
+        <div class="cap" data-at="0.36"><b>平衡</b><span>最高那根 K 的低點第一次被跌破，之後在區間裡回撤盤整。</span></div>
+        <div class="cap" data-at="0.7"><b>極陰</b><span>空方完全主導。</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 道、法、術（這段從陽轉陰） -->
+  <section class="story" id="dao" data-shape="dao" style="height: 300vh">
+    <div class="sticky">
+      <div class="copy caps">
+        <p class="kicker">道、法、術</p>
+        <div class="cap" data-at="0"><b>道＝錢</b><span>錢驅動市場循環：錢、價格行為、K 線、結構。</span></div>
+        <div class="cap" data-at="0.34"><b>法＝滾倉</b><span>「勝兵先勝而後求戰。」</span><small>《孫子兵法》</small></div>
+        <div class="cap" data-at="0.67"><b>術＝看待市場的方法</b><span>判斷順序：結構 ＞ 單根 K 高低 ＞ 價格行為。<br>術是看待市場，法才是操作市場。</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 書 -->
+  <section class="panel" id="book" data-shape="book">
+    <div class="copy">
+      <p class="kicker">正在寫</p>
+      <h2>《雙極交易法》</h2>
+      <p>大約 550 頁，思想和交易法寫在同一本。寫完會放在這裡。</p>
+      <span class="tag">寫作中</span>
+    </div>
+  </section>
+
+  <!-- 金句 -->
+  <section class="panel quote" data-shape="q0"><div class="copy"><p class="qtext">選擇不做什麼比做什麼重要</p><p class="qsign">Snsheng</p></div></section>
+  <section class="panel quote" data-shape="q1"><div class="copy"><p class="qtext">是敬畏不是預測</p><p class="qsign">Snsheng</p></div></section>
+  <section class="panel quote" data-shape="q2"><div class="copy"><p class="qtext">像由心生</p><p class="qsign">Snsheng</p></div></section>
+  <section class="panel quote" data-shape="q3"><div class="copy"><p class="qpre">十年後，希望別人想到我的時候會說</p><p class="qtext">這個人，讓我開始用不同的方式思考世界</p></div></section>
+
+  <!-- OX -->
+  <section class="panel" id="ox" data-shape="ox">
+    <div class="copy">
+      <p class="kicker">我做的工具</p>
+      <h2>OX 篩選器</h2>
+      <p>手畫一個型態，幫你找出長得像的股票。台股和加密貨幣各一個版本。</p>
+      <div class="shots">
+        <a class="shot" href="https://oxpattern.com"><img src="media/shot-ox-tw.jpg" alt="OX 台股畫面" loading="lazy"><span>OX 台股 ↗</span></a>
+        <a class="shot" href="https://ox-crypto-independent.vercel.app"><img src="media/shot-ox-crypto.jpg" alt="OX 加密畫面" loading="lazy"><span>OX 加密 ↗</span></a>
+      </div>
+    </div>
+  </section>
+
+  <!-- 合成市場 -->
+  <section class="panel" id="merge" data-shape="merge">
+    <div class="copy">
+      <p class="kicker">小遊戲</p>
+      <h2>合成市場</h2>
+      <p>台股、美股、加密、外匯的公司和幣丟進來合成，越合越大。有排位賽和每日挑戰。</p>
+      <a class="shot single" href="https://merge-market.btcfly.chatgpt.site"><img src="media/shot-merge.jpg" alt="合成市場畫面" loading="lazy"><span>開始玩 ↗</span></a>
+    </div>
+  </section>
+
+  <!-- 影片 -->
+  <section class="panel" id="films" data-shape="films">
+    <div class="copy wide">
+      <p class="kicker">我做的片</p>
+      <h2>一張 K 線圖，看完一段歷史</h2>
+      <div class="wall">
+        <a class="film" href="#" data-key="ig"><video muted loop playsinline preload="none" poster="media/taiex60.jpg" data-src="media/taiex60.mp4"></video><span>台股 60 年</span></a>
+        <a class="film" href="#" data-key="ig"><video muted loop playsinline preload="none" poster="media/btc.jpg" data-src="media/btc.mp4"></video><span>比特幣</span></a>
+        <a class="film" href="#" data-key="ig"><video muted loop playsinline preload="none" poster="media/tw400.jpg" data-src="media/tw400.mp4"></video><span>台灣 400 年</span></a>
+        <a class="film" href="#" data-key="ig"><video muted loop playsinline preload="none" poster="media/rallies.jpg" data-src="media/rallies.mp4"></video><span>台股最強 7 次上漲</span></a>
+        <a class="film" href="#" data-key="ig"><video muted loop playsinline preload="none" poster="media/musk.jpg" data-src="media/musk.mp4"></video><span>如果馬斯克是一檔股票</span></a>
+        <a class="film" href="#" data-key="ig"><video muted loop playsinline preload="none" poster="media/gold.jpg" data-src="media/gold.mp4"></video><span>黃金</span></a>
+        <a class="film" href="#" data-key="ig"><video muted loop playsinline preload="none" poster="media/swan.jpg" data-src="media/swan.mp4"></video><span>台股 5 大黑天鵝</span></a>
+        <a class="film" href="#" data-key="ig"><video muted loop playsinline preload="none" poster="media/apple.jpg" data-src="media/apple.mp4"></video><span>蘋果的人生 K 線圖</span></a>
+      </div>
+      <a class="more" href="#" data-key="ig">到 Instagram 看完整版 ↗</a>
+    </div>
+  </section>
+
+  <!-- 結尾 -->
+  <section class="panel" id="end" data-shape="logo">
+    <div class="copy">
+      <p class="kicker">一起聊</p>
+      <h2>OX.Trading AI 討論群</h2>
+      <p>加進 LINE 社群，直接找我聊。用電腦打開連結會出現 QR code，拿手機掃就能加入。</p>
+      <a class="cta" href="#" data-key="line"><svg viewBox="0 0 24 24"><use href="#i-line-w"/></svg>加入 LINE 社群</a>
+      <div class="endicons">
+        <a href="#" data-key="ig" aria-label="Instagram"><svg viewBox="0 0 24 24"><use href="#i-ig"/></svg></a>
+        <a href="#" data-key="threads" aria-label="Threads"><svg viewBox="0 0 24 24"><use href="#i-threads"/></svg></a>
+        <a href="#" data-key="yt" aria-label="YouTube"><svg viewBox="0 0 24 24"><use href="#i-yt"/></svg></a>
+      </div>
+      <footer>© 2026 Snsheng</footer>
+    </div>
+  </section>
 </main>
 
 <div class="toast" role="status" aria-live="polite"></div>
 
 <!-- 圖示 -->
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
-  <symbol id="i-go" viewBox="0 0 24 24"><path d="M7 17 17 7M9 7h8v8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
   <symbol id="i-ig" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3.2" y="3.2" width="17.6" height="17.6" rx="5.2"/><circle cx="12" cy="12" r="4.1"/></g><circle cx="17.2" cy="6.8" r="1.1" fill="currentColor"/></symbol>
-  <symbol id="i-x" viewBox="-2.5 -2.5 29 29"><path fill="currentColor" d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932ZM17.61 20.644h2.039L6.486 3.24H4.298Z"/></symbol>
   <symbol id="i-threads" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" d="M17.6 7.6C16.4 4.9 14.4 3.5 12 3.5c-4.6 0-7.6 3.5-7.6 8.5s3 8.5 7.6 8.5c3.6 0 6.3-2 6.6-5 .3-2.9-1.8-4.6-5-4.6-2.6 0-4 1.1-4 2.6 0 1.4 1.2 2.3 2.9 2.2 2.6-.2 3.8-2.1 3.6-6.3"/></symbol>
   <symbol id="i-yt" viewBox="0 0 24 24"><rect x="2.6" y="5.4" width="18.8" height="13.2" rx="4" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M10.3 9.2v5.6l4.8-2.8Z" fill="currentColor"/></symbol>
-  <symbol id="i-line" viewBox="0 0 24 24"><path fill="currentColor" d="M12 3.6c-5 0-9.1 3.3-9.1 7.4 0 3.6 3.2 6.7 7.6 7.3.3.1.7.2.8.5.1.2.1.6 0 .9l-.1.8c0 .2-.2.9.8.5s5.4-3.2 7.4-5.4c1.4-1.5 2-3 2-4.6 0-4.1-4.1-7.4-9.4-7.4Z"/><g fill="none" stroke="#06C755" stroke-width="1.15" stroke-linecap="round" stroke-linejoin="round"><path d="M6.6 9.2v3.5h2"/><path d="M10.1 9.2v3.5"/><path d="M11.7 12.7V9.2l2.6 3.5V9.2"/><path d="M17.6 9.2h-1.9v3.5h1.9M15.7 10.95h1.8"/></g></symbol>
+  <symbol id="i-line" viewBox="0 0 24 24"><path fill="currentColor" d="M12 3.6c-5 0-9.1 3.3-9.1 7.4 0 3.6 3.2 6.7 7.6 7.3.3.1.7.2.8.5.1.2.1.6 0 .9l-.1.8c0 .2-.2.9.8.5s5.4-3.2 7.4-5.4c1.4-1.5 2-3 2-4.6 0-4.1-4.1-7.4-9.4-7.4Z"/><g fill="none" stroke="#fff" stroke-width="1.15" stroke-linecap="round" stroke-linejoin="round"><path d="M6.6 9.2v3.5h2"/><path d="M10.1 9.2v3.5"/><path d="M11.7 12.7V9.2l2.6 3.5V9.2"/><path d="M17.6 9.2h-1.9v3.5h1.9M15.7 10.95h1.8"/></g></symbol>
+  <symbol id="i-line-w" viewBox="0 0 24 24"><path fill="#fff" d="M12 3.6c-5 0-9.1 3.3-9.1 7.4 0 3.6 3.2 6.7 7.6 7.3.3.1.7.2.8.5.1.2.1.6 0 .9l-.1.8c0 .2-.2.9.8.5s5.4-3.2 7.4-5.4c1.4-1.5 2-3 2-4.6 0-4.1-4.1-7.4-9.4-7.4Z"/><g fill="none" stroke="#06C755" stroke-width="1.15" stroke-linecap="round" stroke-linejoin="round"><path d="M6.6 9.2v3.5h2"/><path d="M10.1 9.2v3.5"/><path d="M11.7 12.7V9.2l2.6 3.5V9.2"/><path d="M17.6 9.2h-1.9v3.5h1.9M15.7 10.95h1.8"/></g></symbol>
   <symbol id="i-candle" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M7 3.5v3M7 15.5v3"/><rect x="5" y="6.5" width="4" height="9" rx="1"/><path d="M15.5 6v4M15.5 17.5v3"/><rect x="13.5" y="10" width="4" height="7.5" rx="1" fill="currentColor"/></g></symbol>
   <symbol id="i-coin" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.6"/><path d="M9.6 7.8h3.3a2 2 0 0 1 0 4H9.6Zm0 4h3.9a2.1 2.1 0 0 1 0 4.2H9.6ZM9.6 7.8v8.4M11.2 6.3v1.5M11.2 16.2v1.5"/></g></symbol>
   <symbol id="i-merge" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="9" cy="14" r="5.6"/><circle cx="16.4" cy="8" r="3.6"/></g><circle cx="9" cy="14" r="2" fill="currentColor"/></symbol>
-  <symbol id="i-book" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M3.5 5.6c2.9-1 5.7-.7 8.5 1.1v13c-2.8-1.8-5.6-2.1-8.5-1.1Z"/><path d="M20.5 5.6c-2.9-1-5.7-.7-8.5 1.1v13c2.8-1.8 5.6-2.1 8.5-1.1Z"/></g></symbol>
 </svg>
 
-<script type="module" src="story.js"></script>
 <script>
-  // 網址都在這裡改。空字串＝還沒設定，點了會提示。
+  // 網址都在這裡改。空字串＝還沒設定。
   const LINKS = {
-    line: "https://line.me/ti/g2/FXj0yahd04U4JecSoC4uPInXiqhLulqdCl54Ag",  // OX.Trading AI 討論群
+    line: "https://line.me/ti/g2/FXj0yahd04U4JecSoC4uPInXiqhLulqdCl54Ag",
     ig: "https://www.instagram.com/btcfly/",
-    x: "",         // https://x.com/帳號
     threads: "https://www.threads.com/@ox.trading.ai",
     yt: "https://www.youtube.com/@snsheng"
   };
-
   const toast = document.querySelector(".toast");
   let toastTimer;
   function say(msg) {
-    toast.textContent = msg;
-    toast.classList.add("on");
-    clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => toast.classList.remove("on"), 1800);
+    toast.textContent = msg; toast.classList.add("on");
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => toast.classList.remove("on"), 1800);
   }
-
   document.querySelectorAll("a[data-key]").forEach(a => {
-    const key = a.dataset.key;
-    if (key in LINKS) {
-      if (LINKS[key]) a.href = LINKS[key];
-      else a.addEventListener("click", e => { e.preventDefault(); say("這個連結還沒開放"); });
-    }
-    if (a.href && !a.href.endsWith("#")) { a.target = "_blank"; a.rel = "noopener"; }
+    const u = LINKS[a.dataset.key];
+    if (u) a.href = u; else a.addEventListener("click", e => { e.preventDefault(); say("這個連結還沒開放"); });
   });
-
-  // 進場一層一層浮上來
-  document.querySelectorAll(".rise").forEach((el, i) => { el.style.animationDelay = (0.06 * i) + "s"; });
-
-  // 分享：手機叫出分享選單，電腦就複製網址
+  document.querySelectorAll("a[href^='http']").forEach(a => { a.target = "_blank"; a.rel = "noopener"; });
+  document.querySelectorAll(".rise").forEach((el, i) => { el.style.animationDelay = (0.08 * i) + "s"; });
   document.querySelector(".share").addEventListener("click", async () => {
     const data = { title: document.title, url: location.href };
-    if (navigator.share) {
-      try { await navigator.share(data); } catch (e) {}
-      return;
-    }
-    try { await navigator.clipboard.writeText(location.href); say("網址已複製"); }
-    catch (e) { say(location.href); }
+    if (navigator.share) { try { await navigator.share(data); } catch (e) {} return; }
+    try { await navigator.clipboard.writeText(location.href); say("網址已複製"); } catch (e) { say(location.href); }
   });
+  // 影片：滑到才載、才播
+  const io = new IntersectionObserver(es => es.forEach(e => {
+    const v = e.target;
+    if (e.isIntersecting) { if (!v.getAttribute("src")) v.src = v.dataset.src; v.play().catch(() => {}); } else v.pause();
+  }), { rootMargin: "120px" });
+  document.querySelectorAll(".film video").forEach(v => io.observe(v));
 </script>
+<script type="module" src="site.js"></script>
 </body>
 </html>
