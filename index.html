@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Snsheng｜永盛</title>
 <meta name="description" content="永盛（Snsheng）的社群和作品：LINE 社群、Instagram、X、OX 篩選器、合成市場。">
-<meta name="theme-color" content="#0B141D">
+<meta name="theme-color" content="#08101A">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Snsheng｜永盛">
 <meta property="og:description" content="21 歲，做合約短線第四年。正在寫《雙極交易法》。">
@@ -21,7 +21,7 @@
   :root {
     --navy: #223E57;
     --cream: #F1EADC;
-    --bg: #0B141D;
+    --bg: #08101A;
     --ink: rgba(241, 234, 220, .94);
     --ink-2: rgba(241, 234, 220, .58);
     --ink-3: rgba(241, 234, 220, .34);
@@ -43,25 +43,13 @@
   }
   a { color: inherit; text-decoration: none; }
 
-  /* 背景：深藍和米白兩團光，慢慢飄 */
+  /* 背景：畫布畫 K 線、均線、極光、浮點（bg.js） */
   .bg { position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; }
-  .orb { position: absolute; border-radius: 50%; filter: blur(70px); will-change: transform; }
-  .orb.a {
-    width: 520px; height: 520px; left: -180px; top: -200px;
-    background: radial-gradient(circle, rgba(52, 96, 136, .75), rgba(34, 62, 87, 0) 70%);
-    animation: driftA 22s ease-in-out infinite alternate;
-  }
-  .orb.b {
-    width: 460px; height: 460px; right: -200px; bottom: -160px;
-    background: radial-gradient(circle, rgba(241, 234, 220, .16), rgba(241, 234, 220, 0) 70%);
-    animation: driftB 26s ease-in-out infinite alternate;
-  }
+  .bg canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
   .grain {
     position: absolute; inset: -50%; opacity: .07; mix-blend-mode: overlay;
     background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
   }
-  @keyframes driftA { to { transform: translate(120px, 160px) scale(1.15); } }
-  @keyframes driftB { to { transform: translate(-140px, -220px) scale(1.1); } }
 
   .wrap {
     position: relative; z-index: 1;
@@ -87,18 +75,20 @@
   .avatar {
     position: relative; width: 116px; height: 116px; margin: 0 auto 18px;
     border-radius: 50%;
-    background: radial-gradient(circle at 50% 22%, #121F2C, #080F16 72%);
+    background: #F5D417;
     display: grid; place-items: center;
-    box-shadow: 0 0 0 1px var(--line), 0 18px 50px rgba(0, 0, 0, .45);
+    box-shadow: 0 0 0 1px rgba(255, 214, 90, .25), 0 0 70px rgba(255, 196, 40, .28), 0 18px 50px rgba(0, 0, 0, .45);
   }
   .avatar img {
     width: 86%; height: 86%; object-fit: contain;
     filter: drop-shadow(0 0 2px rgba(241, 234, 220, .55)) drop-shadow(0 0 7px rgba(241, 234, 220, .28));
   }
-  .avatar img.photo { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; filter: none; }
+  .avatar img.photo { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; filter: none; transform: scale(1.04); }
+  .avatar { overflow: visible; }
+  .avatar .clip { position: absolute; inset: 0; border-radius: 50%; overflow: hidden; }
   .avatar .ring {
     position: absolute; inset: -7px; border-radius: 50%;
-    background: conic-gradient(from 0deg, rgba(241, 234, 220, 0), rgba(241, 234, 220, .55) 22%, rgba(241, 234, 220, 0) 40%, rgba(80, 130, 175, 0) 55%, rgba(80, 130, 175, .7) 75%, rgba(80, 130, 175, 0) 92%);
+    background: conic-gradient(from 0deg, rgba(255, 214, 90, 0), rgba(255, 214, 90, .75) 22%, rgba(255, 214, 90, 0) 40%, rgba(80, 150, 210, 0) 55%, rgba(80, 150, 210, .7) 75%, rgba(80, 150, 210, 0) 92%);
     -webkit-mask: radial-gradient(closest-side, transparent calc(100% - 2px), #000 calc(100% - 1.5px));
             mask: radial-gradient(closest-side, transparent calc(100% - 2px), #000 calc(100% - 1.5px));
     animation: spin 14s linear infinite;
@@ -138,7 +128,7 @@
     min-height: 72px; padding: 14px 16px 14px 14px;
     border-radius: 18px;
     background: var(--card); border: 1px solid var(--line);
-    -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
     transition: background .2s, border-color .2s, transform .15s;
   }
   a.card:hover { background: var(--card-hover); border-color: rgba(241, 234, 220, .2); }
@@ -181,8 +171,7 @@
   }
 
   footer { margin-top: 44px; text-align: center; color: var(--ink-3); font-size: 12px; letter-spacing: 1px; }
-  footer img { width: 26px; height: 26px; display: block; margin: 0 auto 10px; opacity: .9;
-    filter: drop-shadow(0 0 2px rgba(241, 234, 220, .5)); }
+  footer img { width: 26px; height: 26px; display: block; margin: 0 auto 10px; border-radius: 50%; opacity: .9; }
 
   .toast {
     position: fixed; left: 50%; bottom: calc(28px + env(safe-area-inset-bottom)); z-index: 5;
@@ -199,14 +188,14 @@
   @keyframes rise { to { opacity: 1; transform: none; } }
 
   @media (prefers-reduced-motion: reduce) {
-    .orb, .avatar .ring, .card.feature::after { animation: none; }
+    .avatar .ring, .card.feature::after { animation: none; }
     .rise { animation: none; opacity: 1; transform: none; }
   }
 </style>
 </head>
 <body>
 
-<div class="bg" aria-hidden="true"><i class="orb a"></i><i class="orb b"></i><i class="grain"></i></div>
+<div class="bg" aria-hidden="true"><canvas id="bg"></canvas><i class="grain"></i></div>
 
 <main class="wrap">
   <button class="share" type="button" aria-label="分享這個網頁">
@@ -214,8 +203,7 @@
   </button>
 
   <header class="hero">
-    <!-- 換成照片：把檔名改成 photo.jpg，class 加上 photo -->
-    <div class="avatar rise"><span class="ring"></span><img src="avatar.png" alt="Snsheng 頭像"></div>
+    <div class="avatar rise"><span class="ring"></span><span class="clip"><img class="photo" src="avatar.jpg" alt="Snsheng 頭像"></span></div>
     <h1 class="name rise">Snsheng</h1>
     <p class="sub rise">永盛<i>/</i>雙極交易法</p>
     <p class="bio rise">21 歲，做合約短線第四年。<br>正在寫一本書，叫《雙極交易法》。</p>
@@ -292,7 +280,7 @@
   </section>
 
   <footer class="rise">
-    <img src="avatar.png" alt="">
+    <img src="avatar.jpg" alt="">
     © 2026 Snsheng
   </footer>
 </main>
@@ -313,7 +301,10 @@
   <symbol id="i-book" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M3.5 5.6c2.9-1 5.7-.7 8.5 1.1v13c-2.8-1.8-5.6-2.1-8.5-1.1Z"/><path d="M20.5 5.6c-2.9-1-5.7-.7-8.5 1.1v13c2.8-1.8 5.6-2.1 8.5-1.1Z"/></g></symbol>
 </svg>
 
+<script src="bg.js"></script>
 <script>
+  startBg(document.getElementById("bg"));
+
   // 網址都在這裡改。空字串＝還沒設定，點了會提示。
   const LINKS = {
     line: "https://line.me/ti/g2/FXj0yahd04U4JecSoC4uPInXiqhLulqdCl54Ag",  // OX.Trading AI 討論群
