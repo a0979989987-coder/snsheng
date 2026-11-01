@@ -1,478 +1,774 @@
-// 背景一鏡到底：往下滑就往前演。
-// 金色粒子星雲 → 聚成 K 線、越壓越緊 → 突破、金光炸開 → K 線倒平、K 棒長成 3D 城市 → 拉回宇宙。
+// 背景：午後的玻璃攝影棚。
+// 一打開：窗光裡的金塵旋成一團 → 凝成一排玻璃 K 棒 → 整排往下壓、停一下、發抖 → 最後幾根一格衝到頂（金光掃過、鏡頭推近震一下、塵埃炸開、地上金色波紋）。
+// 往下滑：同一排玻璃長高、後面長出玻璃大樓變成城市 → 滑到底城市沉下去、金塵旋回星雲。
+// 互動：手指推開塵埃、留下金色光痕、按住會吸過來、點空白處炸開、點頭像再演一次。
 import * as THREE from "./vendor/three.module.min.js";
+import { RoomEnvironment } from "./vendor/RoomEnvironment.js";
 
 const canvas = document.getElementById("bg");
 const flash = document.getElementById("flash");
+const sweep = document.getElementById("sweep");
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const phone = matchMedia("(max-width: 600px)").matches;
 
 let renderer;
 try {
-  renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: "high-performance" });
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance" });
 } catch (e) {
   document.documentElement.classList.add("no-webgl");
 }
-
 if (renderer) start();
 
 function start() {
-  renderer.setClearColor(0xffffff, 0);
-
   // ---------- 小工具 ----------
-  let seed = 20251101;
+  let seed = 51;
   const rand = () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296;
   const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
   const lerp = (a, b, t) => a + (b - a) * t;
   const sstep = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
-  const bump = (x, a, b) => (x <= a || x >= b) ? 0 : Math.sin(Math.PI * (x - a) / (b - a));
-  const backOut = t => { const s = 1.6; t -= 1; return t * t * ((s + 1) * t + s) + 1; };
-  const rgb = hex => [((hex >> 16) & 255) / 255, ((hex >> 8) & 255) / 255, (hex & 255) / 255];
+  const easeOut = t => 1 - Math.pow(1 - clamp(t, 0, 1), 3);
 
-  // 白金＋淡藍，K 線用加密片那組青藍漲、桃紅跌
-  const GOLD_DK = rgb(0x8d712e), GOLD = rgb(0xb8913f), GOLD_LT = rgb(0xd8bc83);
-  const BLUE = rgb(0x7fa6d6), BLUE_LT = rgb(0xa9c4e8);
-  const UP = rgb(0x52b4d1), DOWN = rgb(0xeb4779);
-
-  const phone = matchMedia("(max-width: 600px)").matches;
-  const N = phone ? 3000 : 4000;
-  const GROUND = -15;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.08;
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
   const scene = new THREE.Scene();
-  scene.fog = new THREE.Fog(0xffffff, 80, 220);
-  const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 800);
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  const studio = new RoomEnvironment(renderer);
+  {
+    const dark = new THREE.MeshBasicMaterial({ color: 0x15181d });
+    const card = (x, y, z, sx, sy, sz) => { const m = new THREE.Mesh(new THREE.BoxGeometry(), dark); m.position.set(x, y, z); m.scale.set(sx, sy, sz); studio.add(m); };
+    card(-15.4, 11, -2, 0.3, 22, 4.5);   // 左邊一片直的黑卡
+    card(14.6, 11, 6, 0.3, 22, 3.5);     // 右邊一片
+    card(0, 4.5, -13.8, 18, 1.6, 0.3);   // 後面一條橫的
+    card(-3, 2.2, 14.2, 16, 1.2, 0.3);   // 前面低處一條
+    const strip = (x, y, z, sx, sy, sz, k) => { const m = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial({ color: new THREE.Color(k, k, k * 0.96) })); m.position.set(x, y, z); m.scale.set(sx, sy, sz); studio.add(m); };
+    strip(-15.3, 11, 4.2, 0.2, 22, 1.4, 22);   // 左前方一條亮燈
+    strip(14.5, 11, -3.5, 0.2, 22, 1.2, 14);   // 右後方一條亮燈
+    strip(5, 14, 14.3, 2.2, 10, 0.2, 18);      // 鏡頭後面一條
+  }
+  scene.environment = pmrem.fromScene(studio, 0.03).texture;
+  const camera = new THREE.PerspectiveCamera(35, 1, 0.5, 900);
 
-  // ---------- K 線：前段越壓越緊，最後 7 根往上噴 ----------
-  const M = 34, SQ = 27, SPAN = 46, DX = SPAN / (M - 1), X0 = -SPAN / 2, BW = DX * 0.72;
+  // 光從左後上方的窗戶照進來
+  const L = new THREE.Vector3(0.5, -0.78, 0.38).normalize();
+  const WIN = { x0: -15, x1: 1, z0: 1.5, z1: 10 };   // 窗格光落在地上的範圍
+
+  // ---------- 攝影棚：背景球＋地板 ----------
+  const sky = new THREE.Mesh(new THREE.SphereGeometry(400, 48, 24), new THREE.ShaderMaterial({
+    side: THREE.BackSide, depthWrite: false,
+    uniforms: { uTime: { value: 0 } },
+    vertexShader: `varying vec3 vDir; void main(){ vDir = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
+    fragmentShader: `
+      varying vec3 vDir; uniform float uTime;
+      float disc(vec3 d, vec3 c, float r){ float x = distance(d, normalize(c)); return smoothstep(r, r*0.8, x) * (0.75 + 0.25 * smoothstep(r*0.55, r*0.9, x)); }
+      void main(){
+        float y = vDir.y;
+        vec3 top = vec3(0.900, 0.855, 0.780);   // 香檳金
+        vec3 mid = vec3(0.940, 0.925, 0.902);
+        vec3 low = vec3(0.870, 0.890, 0.920);   // 淡藍
+        vec3 col = y > 0.0 ? mix(mid, top, smoothstep(0.02, 0.55, y)) : mix(mid, low, smoothstep(0.0, 0.25, -y));
+        // 遠處柔焦光斑
+        float b = 0.0;
+        b += disc(vDir, vec3(-0.62, 0.20, -0.76), 0.085) * 0.55;
+        b += disc(vDir, vec3( 0.52, 0.26, -0.81), 0.065) * 0.50;
+        b += disc(vDir, vec3( 0.18, 0.30, -0.94), 0.045) * 0.45;
+        b += disc(vDir, vec3(-0.30, 0.08, -0.95), 0.035) * 0.50;
+        b += disc(vDir, vec3( 0.78, 0.12, -0.61), 0.055) * 0.40;
+        b += disc(vDir, vec3(-0.85, 0.30, -0.45), 0.060) * 0.35;
+        col = mix(col, vec3(1.0, 0.94, 0.80), clamp(b, 0.0, 1.0) * (0.85 + 0.15 * sin(uTime * 0.6)));
+        gl_FragColor = vec4(col, 1.0);
+      }`
+  }));
+  sky.renderOrder = -2;
+  scene.add(sky);
+
+  const floorMat = new THREE.ShaderMaterial({
+    depthWrite: false,
+    uniforms: { uTime: { value: 0 }, uShift: { value: 0 }, uWin: { value: new THREE.Vector4(WIN.x0, WIN.x1, WIN.z0, WIN.z1) } },
+    vertexShader: `varying vec3 vW; void main(){ vec4 w = modelMatrix * vec4(position,1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }`,
+    fragmentShader: `
+      varying vec3 vW; uniform float uTime, uShift; uniform vec4 uWin;
+      void main(){
+        vec3 base = vec3(0.900, 0.888, 0.866);
+        vec3 far = vec3(0.940, 0.925, 0.902);
+        float d = length(vW.xz);
+        vec3 col = mix(base, far, smoothstep(30.0, 140.0, d));
+        // 窗格光：3 欄 × 2 列，邊緣柔一點，慢慢移動
+        vec2 q = vec2((vW.x - uWin.x - uShift) / (uWin.y - uWin.x), (vW.z - uWin.z) / (uWin.w - uWin.z));
+        q.x += q.y * 0.32;
+        float inside = smoothstep(0.0, 0.03, q.x) * smoothstep(1.0, 0.97, q.x) * smoothstep(0.0, 0.04, q.y) * smoothstep(1.0, 0.96, q.y);
+        vec2 f = fract(q * vec2(3.0, 2.0));
+        float pane = smoothstep(0.05, 0.09, f.x) * smoothstep(0.95, 0.91, f.x) * smoothstep(0.06, 0.11, f.y) * smoothstep(0.94, 0.89, f.y);
+        float glow = smoothstep(0.6, 0.0, length((q - 0.5) * vec2(1.0, 1.3))) * 0.35;
+        vec3 sun = vec3(1.0, 0.985, 0.950);
+        col = mix(col, sun, clamp(inside * pane * 0.97 + glow * 0.35, 0.0, 1.0));
+        col *= 0.95 + 0.05 * smoothstep(-6.0, 30.0, -vW.z);
+        gl_FragColor = vec4(col, 1.0);
+      }`
+  });
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), floorMat);
+  floor.rotation.x = -Math.PI / 2;
+  floor.renderOrder = -1;
+  scene.add(floor);
+
+  // 地上的影子（淡藍色）
+  const shadowCatcher = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), new THREE.ShadowMaterial({ color: 0x5d7491, opacity: 0.3 }));
+  shadowCatcher.rotation.x = -Math.PI / 2; shadowCatcher.position.y = 0.01; shadowCatcher.receiveShadow = true;
+  shadowCatcher.renderOrder = 2;
+  scene.add(shadowCatcher);
+
+  // 光：窗戶的陽光＋環境
+  const sun = new THREE.DirectionalLight(0xfff1d6, 2.2);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(phone ? 1024 : 2048, phone ? 1024 : 2048);
+  sun.shadow.camera.left = -40; sun.shadow.camera.right = 40; sun.shadow.camera.top = 40; sun.shadow.camera.bottom = -40;
+  sun.shadow.camera.near = 1; sun.shadow.camera.far = 140;
+  sun.shadow.radius = 6; sun.shadow.bias = -0.0006;
+  scene.add(sun, sun.target);
+  scene.add(new THREE.HemisphereLight(0xfff6e8, 0xdfe7f1, 0.7));
+
+  // 光束：從窗戶斜斜打下來的三道光
+  const beamMat = new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, side: THREE.DoubleSide,
+    uniforms: { uA: { value: 1 } },
+    vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
+    fragmentShader: `varying vec2 vUv; uniform float uA;
+      void main(){
+        float side = smoothstep(0.0, 0.25, vUv.x) * smoothstep(1.0, 0.75, vUv.x);
+        float along = pow(1.0 - vUv.y, 0.7) * smoothstep(0.0, 0.05, vUv.y);
+        gl_FragColor = vec4(1.0, 0.985, 0.94, 0.34 * side * along * uA);
+      }`
+  });
+  const beams = [];
+  for (let c = 0; c < 3; c++) {
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.BufferAttribute(new Float32Array(12), 3));
+    g.setAttribute("uv", new THREE.BufferAttribute(new Float32Array([0, 0, 1, 0, 1, 1, 0, 1]), 2));
+    g.setIndex([0, 1, 2, 0, 2, 3]);
+    const m = new THREE.Mesh(g, beamMat);
+    m.frustumCulled = false; m.renderOrder = 5;
+    scene.add(m); beams.push(m);
+  }
+  function placeBeams(shift) {
+    const up = L.clone().multiplyScalar(-48);
+    const zc = (WIN.z0 + WIN.z1) / 2;
+    for (let c = 0; c < 3; c++) {
+      const w = (WIN.x1 - WIN.x0) / 3;
+      const x0 = WIN.x0 + shift - 0.16 * (WIN.x1 - WIN.x0) + c * w + w * 0.08, x1 = x0 + w * 0.84;
+      const p = beams[c].geometry.attributes.position.array;
+      p.set([x0, 0.02, zc, x1, 0.02, zc, x1 + up.x, up.y, zc + up.z, x0 + up.x, up.y, zc + up.z]);
+      beams[c].geometry.attributes.position.needsUpdate = true;
+    }
+  }
+
+  // ---------- K 線資料 ----------
+  const M = phone ? 13 : 18, SQ = phone ? 9 : 13;
+  const DX = 1.24, BW = 0.98, BD = 0.98;
   const candles = [];
   {
     let c = 0;
-    const burst = [3, 4.2, 5.2, 3.4, 4.6, 2.6, 2.2];
+    const steps = [1.9, 2.5, 2.9, 1.8, 2.3, 1.5];
     for (let k = 0; k < M; k++) {
       const o = c;
       if (k < SQ) {
-        const amp = 8.5 * (1 - k / (SQ + 3)) + 0.5;
-        c = (k % 2 ? 1 : -1) * amp * (0.55 + 0.45 * rand());
-      } else {
-        c = o + burst[k - SQ];
-      }
-      const hi = Math.max(o, c) + 0.3 + rand() * 1.2;
-      const lo = Math.min(o, c) - 0.3 - rand() * 1.2;
-      candles.push({ x: X0 + k * DX, o, c, hi, lo, up: c >= o, k });
+        const amp = 2.5 * (1 - k / (SQ + 2)) + 0.35;
+        c = (k % 2 ? 1 : -1) * amp * (0.6 + 0.4 * rand());
+      } else c = o + steps[(k - SQ) % steps.length];
+      candles.push({ x: (k - (M - 1) / 2) * DX, o, c, hi: Math.max(o, c) + 0.15 + rand() * 0.45, lo: Math.min(o, c) - 0.15 - rand() * 0.45, up: c >= o });
     }
-    let mn = Infinity, mx = -Infinity;
-    candles.forEach(k => { mn = Math.min(mn, k.lo); mx = Math.max(mx, k.hi); });
-    const off = -(mn + mx) / 2;
-    candles.forEach(k => { k.o += off; k.c += off; k.hi += off; k.lo += off; });
+    const lo = Math.min(...candles.map(k => k.lo));
+    candles.forEach(k => { const d = 1.4 - lo; k.o += d; k.c += d; k.hi += d; k.lo += d; });
   }
-  const chartMin = Math.min(...candles.map(k => k.lo));
-  const apex = new THREE.Vector3(candles[SQ].x - DX * 0.5, candles[SQ - 1].c, 0);
-  // 每根什麼時候出現：壓縮段慢慢長，突破段一口氣
-  const revealAt = k => k < SQ ? 1.05 + 0.85 * (k / SQ) : 2.0 + 0.035 * (k - SQ);
+  const topY = Math.max(...candles.map(k => k.hi));
 
-  // ---------- 城市：第一排就是那張 K 線，後面幾排是城市 ----------
-  const buildings = [];
-  candles.forEach(k => {
-    buildings.push({ x: k.x, z: 0, w: BW * 1.3, d: 2.2, h: (k.hi - chartMin) * 0.8 + 2, front: true, up: k.up });
+  // 城市：同一排長高＋後面幾排玻璃大樓
+  const towers = [];
+  const rows = phone ? 3 : 4, perRow = phone ? 12 : 16;
+  for (let r = 1; r <= rows; r++) {
+    for (let j = 0; j < perRow; j++) {
+      const span = (M - 1) * DX + 6;
+      const x = -span / 2 + (j + 0.2 + rand() * 0.6) * (span / perRow);
+      towers.push({ x, z: -r * 3.4 - rand() * 1.2, w: 0.9 + rand() * 1.0, d: 0.9 + rand() * 1.1, h: 4 + rand() * 7 + r * 1.8 + 5 * sstep(-span / 2, span / 2, x), t0: 0.12 + 0.45 * (j / perRow) * 0.6 + r * 0.07 + rand() * 0.05 });
+    }
+  }
+  const NB = M + towers.length;
+
+  // ---------- 玻璃 ----------
+  const glass = new THREE.MeshPhysicalMaterial({
+    color: 0xffffff, metalness: 0, roughness: 0.02,
+    transmission: 1, thickness: 1.8, ior: 1.5,
+    clearcoat: 1, clearcoatRoughness: 0.02,
+    iridescence: 0.45, iridescenceIOR: 1.25, iridescenceThicknessRange: [180, 620],
+    attenuationColor: new THREE.Color(0xbfe0de), attenuationDistance: 1.7,
+    envMapIntensity: 1.7, specularIntensity: 1
   });
-  for (let r = 1; r <= 6; r++) {
-    const n = 26;
-    for (let j = 0; j < n; j++) {
-      const x = -32 + (j + rand() * 0.7) * (64 / n);
-      buildings.push({
-        x, z: -r * 5.2 - rand() * 1.6,
-        w: 1.2 + rand() * 1.3, d: 1.4 + rand() * 1.6,
-        h: 3 + rand() * 9 + 8 * sstep(-32, 32, x) + r * 1.6,
-        front: false
-      });
-    }
+  // 圓角長方體：直邊導圓，上下是平的，拉高不會變形
+  const rr = new THREE.Shape();
+  {
+    const x = -0.5, y = -0.5, w = 1, h = 1, r = 0.17;
+    rr.moveTo(x + r, y); rr.lineTo(x + w - r, y); rr.quadraticCurveTo(x + w, y, x + w, y + r);
+    rr.lineTo(x + w, y + h - r); rr.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    rr.lineTo(x + r, y + h); rr.quadraticCurveTo(x, y + h, x, y + h - r);
+    rr.lineTo(x, y + r); rr.quadraticCurveTo(x, y, x + r, y);
   }
-  const B = buildings.length;
-  // 由左往右一棟一棟長起來
-  buildings.forEach(b => { b.t0 = 2.62 + 0.3 * (b.x + 32) / 64 + (b.front ? 0 : 0.04 + rand() * 0.08); });
+  const box = new THREE.ExtrudeGeometry(rr, { depth: 1, bevelEnabled: false, curveSegments: 8 });
+  box.rotateX(-Math.PI / 2);
+  const bodies = new THREE.InstancedMesh(box, glass, NB);
+  bodies.castShadow = true; bodies.frustumCulled = false; bodies.renderOrder = 6;
+  scene.add(bodies);
 
-  // ---------- 粒子 ----------
-  const NC = Math.floor(N * 0.76);                 // 拿來組 K 線的
-  const P = {
-    neb: new Float32Array(N * 4),                  // 半徑、角度、高度、轉速
-    chart: new Float32Array(N * 3),
-    cand: new Int16Array(N).fill(-1),
-    city: new Float32Array(N * 4),                 // 第幾棟、x 偏移、高度比例、面
-    delay: new Float32Array(N),
-    hold: new Float32Array(N * 3),                 // 突破前擠在頂點的位置
-    off: new Float32Array(N * 3),                  // 手指推開的位移
-    cNeb: new Float32Array(N * 3), cChart: new Float32Array(N * 3), cCity: new Float32Array(N * 3),
-    sNeb: new Float32Array(N), aNeb: new Float32Array(N)
-  };
-  const mixc = (a, b, t) => [lerp(a[0], b[0], t), lerp(a[1], b[1], t), lerp(a[2], b[2], t)];
+  // 倒影：地板下面一份淡淡的
+  const mirrorShader = (alpha, useColor) => new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, side: THREE.DoubleSide,
+    uniforms: { uA: { value: alpha } },
+    defines: useColor ? { MIRROR_COLOR: 1 } : {},
+    vertexShader: `varying float vY; varying vec3 vC;
+      void main(){ vec4 w = modelMatrix * instanceMatrix * vec4(position, 1.0); vY = w.y;
+        vC = vec3(0.56, 0.63, 0.72);
+        #if defined(MIRROR_COLOR) && defined(USE_INSTANCING_COLOR)
+          vC = instanceColor;
+        #endif
+        gl_Position = projectionMatrix * viewMatrix * w; }`,
+    fragmentShader: `uniform float uA; varying float vY; varying vec3 vC;
+      void main(){ float a = uA * smoothstep(-5.0, -0.2, vY); if (a < 0.003) discard; gl_FragColor = vec4(vC, a); }`
+  });
+  const mirrorMat = mirrorShader(0.11, false);
+  const mirror = new THREE.InstancedMesh(box, mirrorMat, NB);
+  mirror.frustumCulled = false; mirror.renderOrder = 0;
+  scene.add(mirror);
 
-  // K 線上每根分到多少顆
-  const weights = candles.map(k => (Math.abs(k.c - k.o) * BW * 3 + (k.hi - k.lo) * 0.6 + 1) * (k.k >= SQ ? 1.8 : 1));
-  const wsum = weights.reduce((a, b) => a + b, 0);
-  const counts = weights.map(w => Math.round(w / wsum * NC));
-  let ci = 0, left = counts[0];
+  // 影線：包在玻璃裡的一條細光，畫面上唯一的顏色
+  const wickGeo = new THREE.CylinderGeometry(0.05, 0.05, 1, 10); wickGeo.translate(0, 0.5, 0);
+  const wicks = new THREE.InstancedMesh(wickGeo, new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: false }), M);
+  wicks.frustumCulled = false;
+  for (let k = 0; k < M; k++) wicks.setColorAt(k, new THREE.Color(candles[k].up ? 0x3fb2d4 : 0xee4a7c));
+  scene.add(wicks);
+  const wickMirror = new THREE.InstancedMesh(wickGeo, mirrorShader(0.3, true), M);
+  wickMirror.frustumCulled = false;
+  for (let k = 0; k < M; k++) wickMirror.setColorAt(k, new THREE.Color(candles[k].up ? 0x3fb2d4 : 0xee4a7c));
+  scene.add(wickMirror);
 
-  for (let i = 0; i < N; i++) {
-    // 星雲：三條旋臂
-    const arm = i % 3;
-    const r = 2.5 + Math.pow(rand(), 0.85) * 33;
-    const a = arm * 2.094 + r * 0.22 + (rand() - 0.5) * 0.9;
-    const h = (rand() - 0.5) * (3.2 - r * 0.06);
-    P.neb.set([r, a, h, 0.14 * (10 / (r + 6))], i * 4);
-    const core = 1 - sstep(3, 16, r);
-    let col = rand() < 0.5 ? mixc(GOLD_DK, GOLD, rand()) : mixc(GOLD, GOLD_LT, rand());
-    if (r > 14 && rand() < 0.42) col = mixc(BLUE, BLUE_LT, rand());
-    P.cNeb.set(col, i * 3);
-    P.sNeb[i] = 0.35 + rand() * 0.6 + core * 0.7;
-    P.aNeb[i] = 0.5 + rand() * 0.45;
-
-    // K 線
-    if (i < NC) {
-      while (left <= 0 && ci < M - 1) { ci++; left = counts[ci]; }
-      left--;
-      const k = candles[ci];
-      P.cand[i] = ci;
-      let x, y;
-      const bodyH = Math.abs(k.c - k.o);
-      if (rand() < 0.8) {
-        x = k.x + (rand() - 0.5) * BW * (k.k >= SQ ? 1.25 : 1);
-        y = lerp(Math.min(k.o, k.c), Math.max(k.o, k.c), rand());
-        if (bodyH < 0.25) y = k.c + (rand() - 0.5) * 0.25;
-      } else {
-        x = k.x + (rand() - 0.5) * 0.1;
-        y = lerp(k.lo, k.hi, rand());
+  // 玻璃的細輪廓（上下圓角框＋四條直邊）
+  const RING = [];
+  {
+    const pts = rr.getPoints(4);   // 圓角長方形的一圈
+    for (let i = 0; i < pts.length - 1; i++) RING.push(pts[i].x, -pts[i].y, pts[i + 1].x, -pts[i + 1].y);
+  }
+  const CORNERS = [[-0.4575, -0.4575], [0.4575, -0.4575], [-0.4575, 0.4575], [0.4575, 0.4575]];
+  const OUT_V = (RING.length / 4) * 2 * 2 + CORNERS.length * 2;   // 每棟幾個頂點
+  const outPos = new Float32Array(NB * OUT_V * 3);
+  const outGeo = new THREE.BufferGeometry();
+  outGeo.setAttribute("position", new THREE.BufferAttribute(outPos, 3).setUsage(THREE.DynamicDrawUsage));
+  const outMat = new THREE.LineBasicMaterial({ color: 0x6f8598, transparent: true, opacity: 0.32, depthWrite: false });
+  const outline = new THREE.LineSegments(outGeo, outMat);
+  outline.frustumCulled = false; outline.renderOrder = 7;
+  scene.add(outline);
+  function setOutline(b, x, z, w, d, y0, y1) {
+    let o = b * OUT_V * 3;
+    if (y1 - y0 < 0.01) { outPos.fill(0, o, o + OUT_V * 3); return; }
+    for (const yy of [y0 + 0.01, y1 - 0.01]) {
+      for (let i = 0; i < RING.length; i += 4) {
+        outPos[o++] = x + RING[i] * w; outPos[o++] = yy; outPos[o++] = z + RING[i + 1] * d;
+        outPos[o++] = x + RING[i + 2] * w; outPos[o++] = yy; outPos[o++] = z + RING[i + 3] * d;
       }
-      P.chart.set([x, y, (rand() - 0.5) * 0.9], i * 3);
-      P.cChart.set(k.up ? mixc(UP, [0.2, 0.5, 0.6], rand() * 0.3) : mixc(DOWN, [0.6, 0.2, 0.35], rand() * 0.3), i * 3);
-    } else {
-      // 其他的當背景金粉
-      P.chart.set([(rand() - 0.5) * 90, (rand() - 0.5) * 56, -8 - rand() * 30], i * 3);
-      P.cChart.set(rand() < 0.6 ? mixc(GOLD, GOLD_LT, rand()) : mixc(BLUE, BLUE_LT, rand()), i * 3);
     }
-    // 突破前全部擠在頂點附近
-    const u = rand() * 6.283, v = Math.acos(2 * rand() - 1), rr = Math.cbrt(rand());
-    P.hold.set([Math.sin(v) * Math.cos(u) * rr, Math.sin(v) * Math.sin(u) * rr, Math.cos(v) * rr], i * 3);
-
-    // 城市：窗戶的燈
-    const b = Math.floor(rand() * B);
-    P.city.set([b, rand() - 0.5, rand(), rand() < 0.82 ? 0 : 1], i * 4);
-    P.cCity.set(rand() < 0.55 ? mixc(GOLD, GOLD_LT, rand()) : mixc(BLUE, BLUE_LT, rand()), i * 3);
-
-    P.delay[i] = rand() * 0.22;
+    for (const [cx, cz] of CORNERS) {
+      outPos[o++] = x + cx * w; outPos[o++] = y0; outPos[o++] = z + cz * d;
+      outPos[o++] = x + cx * w; outPos[o++] = y1; outPos[o++] = z + cz * d;
+    }
   }
 
-  const pos = new Float32Array(N * 3), col = new Float32Array(N * 3), size = new Float32Array(N), alpha = new Float32Array(N);
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute("position", new THREE.BufferAttribute(pos, 3).setUsage(THREE.DynamicDrawUsage));
-  geo.setAttribute("aColor", new THREE.BufferAttribute(col, 3).setUsage(THREE.DynamicDrawUsage));
-  geo.setAttribute("aSize", new THREE.BufferAttribute(size, 1).setUsage(THREE.DynamicDrawUsage));
-  geo.setAttribute("aAlpha", new THREE.BufferAttribute(alpha, 1).setUsage(THREE.DynamicDrawUsage));
-  const pmat = new THREE.ShaderMaterial({
+  // 玻璃把光聚在地上：每根影子中間一小塊亮光
+  const causticMat = new THREE.ShaderMaterial({
     transparent: true, depthWrite: false,
-    uniforms: { uScale: { value: 1 }, uFogNear: { value: 80 }, uFogFar: { value: 220 } },
-    vertexShader: `
-      attribute vec3 aColor; attribute float aSize; attribute float aAlpha;
-      uniform float uScale, uFogNear, uFogFar;
-      varying vec3 vColor; varying float vAlpha;
-      void main() {
-        vec4 mv = modelViewMatrix * vec4(position, 1.0);
-        gl_Position = projectionMatrix * mv;
-        gl_PointSize = max(1.0, aSize * uScale / -mv.z);
-        vColor = aColor;
-        vAlpha = aAlpha * (1.0 - smoothstep(uFogNear, uFogFar, -mv.z));
-      }`,
-    fragmentShader: `
-      varying vec3 vColor; varying float vAlpha;
-      void main() {
-        float d = length(gl_PointCoord - 0.5);
-        float a = smoothstep(0.5, 0.18, d) * vAlpha;
-        if (a < 0.01) discard;
-        gl_FragColor = vec4(vColor, a);
-      }`
+    vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * viewMatrix * modelMatrix * instanceMatrix * vec4(position, 1.0); }`,
+    fragmentShader: `varying vec2 vUv; void main(){ vec2 q = (vUv - 0.5) * 2.0; float r = length(q);
+      float a = smoothstep(1.0, 0.0, r); a = a * a * 0.85; gl_FragColor = vec4(1.0, 0.985, 0.93, a); }`
   });
-  const points = new THREE.Points(geo, pmat);
-  points.frustumCulled = false;
-  scene.add(points);
+  const causticGeo = new THREE.PlaneGeometry(1, 1); causticGeo.rotateX(-Math.PI / 2);
+  const caustics = new THREE.InstancedMesh(causticGeo, causticMat, NB);
+  caustics.frustumCulled = false; caustics.renderOrder = 3;
+  scene.add(caustics);
+  const shadowYaw = Math.atan2(L.x, L.z);
 
-  // ---------- 大樓 ----------
-  scene.add(new THREE.HemisphereLight(0xffffff, 0xc9d6e6, 1.5));
-  const sun = new THREE.DirectionalLight(0xffffff, 1.2); sun.position.set(-30, 60, 40); scene.add(sun);
-  const fill = new THREE.DirectionalLight(0x9fbde6, 0.9); fill.position.set(40, 10, -20); scene.add(fill);
-
-  const box = new THREE.BoxGeometry(1, 1, 1); box.translate(0, 0.5, 0);
-  const towers = new THREE.InstancedMesh(box, new THREE.MeshLambertMaterial({ color: 0xffffff }), B);
-  towers.frustumCulled = false;
-  scene.add(towers);
-  const caps = new THREE.InstancedMesh(box, new THREE.MeshBasicMaterial({ color: 0xffffff }), M);
-  caps.frustumCulled = false;
-  for (let k = 0; k < M; k++) caps.setColorAt(k, new THREE.Color(candles[k].up ? 0x52b4d1 : 0xeb4779));
-  scene.add(caps);
-  const edgePos = new Float32Array(B * 24 * 3);
+  // 金色細邊，讓玻璃在白底上看得清楚
+  const edgePos = new Float32Array(NB * 72);
   const edgeGeo = new THREE.BufferGeometry();
   edgeGeo.setAttribute("position", new THREE.BufferAttribute(edgePos, 3).setUsage(THREE.DynamicDrawUsage));
-  const edges = new THREE.LineSegments(edgeGeo, new THREE.LineBasicMaterial({ color: 0xb8913f, transparent: true, opacity: 0.85 }));
-  edges.frustumCulled = false;
+  const edgeMat = new THREE.LineBasicMaterial({ color: 0xc3a15a, transparent: true, opacity: 0, depthWrite: false });
+  const edges = new THREE.LineSegments(edgeGeo, edgeMat);
+  edges.frustumCulled = false; edges.renderOrder = 7;
   scene.add(edges);
-  const grid = new THREE.GridHelper(260, 65, 0xd8bc83, 0xdfe5ec);
-  grid.position.y = GROUND - 0.01;
-  grid.material.transparent = true;
-  scene.add(grid);
 
-  // 突破的金色衝擊波
-  const ringMat = new THREE.MeshBasicMaterial({ color: 0xc9a24a, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide });
-  const ring = new THREE.Mesh(new THREE.RingGeometry(0.975, 1, 128), ringMat);
-  const ring2 = new THREE.Mesh(new THREE.RingGeometry(0.985, 1, 128), new THREE.MeshBasicMaterial({ color: 0x7fa6d6, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide }));
-  scene.add(ring, ring2);
+  // 突破時地上的金色波紋
+  const ripple = new THREE.Mesh(new THREE.RingGeometry(0.96, 1, 128), new THREE.MeshBasicMaterial({ color: 0xc9a24a, transparent: true, opacity: 0, depthWrite: false, toneMapped: false }));
+  ripple.rotation.x = -Math.PI / 2; ripple.position.y = 0.03; ripple.renderOrder = 3;
+  scene.add(ripple);
 
-  const bh = new Float32Array(B);   // 每棟現在長到幾成
-  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), v3 = new THREE.Vector3(), s3 = new THREE.Vector3();
-
-  function updateCity(T) {
-    let any = false;
-    const fall = 1 - sstep(3.45, 3.9, T);
-    for (let b = 0; b < B; b++) {
-      const g = sstep(buildings[b].t0, buildings[b].t0 + 0.35, T) * fall;
-      bh[b] = g;
-      if (g > 0.001) any = true;
+  // ---------- 金塵 ----------
+  const ND = phone ? 480 : 800, NT = 520;     // 塵埃、光痕
+  const BASE = new Float32Array(ND * 3); let baseInit = false, replayGlide = 0;
+  const D = {
+    home: new Float32Array(ND * 3), neb: new Float32Array(ND * 4), bar: new Float32Array(ND * 3), barK: new Int16Array(ND).fill(-1),
+    ph: new Float32Array(ND), size: new Float32Array(ND), o: new Float32Array(ND * 3), v: new Float32Array(ND * 3), delay: new Float32Array(ND)
+  };
+  for (let i = 0; i < ND; i++) {
+    D.home.set([(rand() - 0.5) * 50, 0.4 + Math.pow(rand(), 0.8) * 17, -16 + rand() * 26], i * 3);
+    const r = 1.5 + Math.pow(rand(), 0.8) * 11, a = (i % 3) * 2.094 + r * 0.35 + (rand() - 0.5) * 0.8;
+    D.neb.set([r, a, (rand() - 0.5) * (1.6 - r * 0.05), 0.5 * (6 / (r + 4))], i * 4);
+    if (rand() < 0.62) {
+      const k = Math.floor(rand() * M);
+      D.barK[i] = k;
+      D.bar.set([candles[k].x + (rand() - 0.5) * BW, 0, (rand() - 0.5) * BD], i * 3);  // y 之後照 K 棒算
+      D.bar[i * 3 + 1] = rand();
     }
-    towers.visible = caps.visible = edges.visible = any;
-    if (!any) return;
-    for (let b = 0; b < B; b++) {
-      const o = buildings[b], g = bh[b], h = Math.max(0.001, o.h * g);
-      m4.compose(v3.set(o.x, GROUND, o.z), q, s3.set(o.w, h, o.d));
-      towers.setMatrixAt(b, m4);
-      if (o.front) {
-        m4.compose(v3.set(o.x, GROUND + h, o.z), q, s3.set(o.w * 1.04, Math.max(0.001, 0.45 * g), o.d * 1.04));
-        caps.setMatrixAt(b, m4);
-      }
-      // 金色邊線
-      const x0 = o.x - o.w / 2, x1 = o.x + o.w / 2, y0 = GROUND, y1 = GROUND + (g > 0.001 ? h : 0), z0 = o.z - o.d / 2, z1 = o.z + o.d / 2;
-      const E = [x0, y0, z0, x1, y0, z0, x1, y0, z0, x1, y0, z1, x1, y0, z1, x0, y0, z1, x0, y0, z1, x0, y0, z0,
-        x0, y1, z0, x1, y1, z0, x1, y1, z0, x1, y1, z1, x1, y1, z1, x0, y1, z1, x0, y1, z1, x0, y1, z0,
-        x0, y0, z0, x0, y1, z0, x1, y0, z0, x1, y1, z0, x1, y0, z1, x1, y1, z1, x0, y0, z1, x0, y1, z1];
-      edgePos.set(g > 0.001 ? E : new Array(72).fill(0), b * 72);
-    }
-    towers.instanceMatrix.needsUpdate = true;
-    caps.instanceMatrix.needsUpdate = true;
-    edgeGeo.attributes.position.needsUpdate = true;
+    D.ph[i] = rand() * 6.283;
+    D.size[i] = rand() < 0.035 ? 2.4 + rand() * 1.8 : 0.5 + rand() * 0.8;   // 少數大顆的當近景光斑
+    D.delay[i] = rand() * 0.5;
+  }
+  const NP = ND + NT;
+  const pPos = new Float32Array(NP * 3), pCol = new Float32Array(NP * 3), pSize = new Float32Array(NP), pAlpha = new Float32Array(NP);
+  const pGeo = new THREE.BufferGeometry();
+  pGeo.setAttribute("position", new THREE.BufferAttribute(pPos, 3).setUsage(THREE.DynamicDrawUsage));
+  pGeo.setAttribute("aColor", new THREE.BufferAttribute(pCol, 3).setUsage(THREE.DynamicDrawUsage));
+  pGeo.setAttribute("aSize", new THREE.BufferAttribute(pSize, 1).setUsage(THREE.DynamicDrawUsage));
+  pGeo.setAttribute("aAlpha", new THREE.BufferAttribute(pAlpha, 1).setUsage(THREE.DynamicDrawUsage));
+  const pMat = new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false,
+    uniforms: { uScale: { value: 1 } },
+    vertexShader: `attribute vec3 aColor; attribute float aSize; attribute float aAlpha; uniform float uScale;
+      varying vec3 vC; varying float vA; varying float vSoft;
+      void main(){ vec4 mv = modelViewMatrix * vec4(position,1.0); gl_Position = projectionMatrix * mv;
+        gl_PointSize = max(1.0, aSize * uScale / -mv.z); vC = aColor; vA = aAlpha; vSoft = clamp((aSize - 1.5) / 2.0, 0.0, 1.0); }`,
+    fragmentShader: `varying vec3 vC; varying float vA; varying float vSoft;
+      void main(){ float d = length(gl_PointCoord - 0.5);
+        float a = smoothstep(0.5, mix(0.15, 0.0, vSoft), d) * vA * mix(1.0, 0.35, vSoft);
+        if (a < 0.01) discard; gl_FragColor = vec4(vC, a); }`
+  });
+  const dust = new THREE.Points(pGeo, pMat);
+  dust.frustumCulled = false; dust.renderOrder = 8;
+  scene.add(dust);
+  const GOLD = [0.72, 0.56, 0.24], GOLD_LT = [0.86, 0.72, 0.42], SUNNY = [0.98, 0.84, 0.48];
+  // 光痕
+  const T = { x: new Float32Array(NT), y: new Float32Array(NT), z: new Float32Array(NT), vx: new Float32Array(NT), vy: new Float32Array(NT), vz: new Float32Array(NT), life: new Float32Array(NT), span: new Float32Array(NT).fill(1), big: new Float32Array(NT), n: 0 };
+  function spark(x, y, z, vx, vy, vz, span, big) {
+    const j = T.n++ % NT;
+    T.x[j] = x; T.y[j] = y; T.z[j] = z; T.vx[j] = vx; T.vy[j] = vy; T.vz[j] = vz; T.life[j] = 1; T.span[j] = span; T.big[j] = big;
   }
 
-  // ---------- 鏡頭：每一段的位置和看的點 ----------
-  const KEYS = [
-    [0.00, [0, 4, 64], [0, -9, 0]],
-    [0.90, [0, 2, 46], [0, 0, 0]],
-    [1.90, [2, 0, 41], [3, 0, 0]],
-    [2.02, [2, 0, 41], [3, 0, 0]],
-    [2.40, [5, 7, 54], [4, 6, 0]],
-    [2.95, [-16, 24, 60], [0, -6, -12]],
-    [3.40, [18, 18, 48], [0, -5, -14]],
-    [3.75, [0, 34, 88], [0, -6, -6]],
-    [4.00, [0, 4, 64], [0, -9, 0]]
-  ];
-  const camPos = new THREE.Vector3(), camLook = new THREE.Vector3();
-  let fit = 1;
-  function cameraAt(T, t) {
-    let i = 1;
-    while (i < KEYS.length - 1 && T > KEYS[i][0]) i++;
-    const [ta, pa, la] = KEYS[i - 1], [tb, pb, lb] = KEYS[i];
-    const e = sstep(ta, tb, T);
-    const look = [lerp(la[0], lb[0], e), lerp(la[1], lb[1], e), lerp(la[2], lb[2], e)];
-    const p = [lerp(pa[0], pb[0], e), lerp(pa[1], pb[1], e), lerp(pa[2], pb[2], e)];
-    // 直式手機畫面窄：鏡頭拉遠，讓整張圖塞得進來
-    camLook.set(look[0], look[1] * Math.sqrt(fit), look[2]);
-    camPos.set(look[0] + (p[0] - look[0]) * fit, camLook.y + (p[1] - look[1]) * fit, look[2] + (p[2] - look[2]) * fit);
-    // 一直有一點呼吸
-    camPos.x += Math.sin(t * 0.21) * 1.6 * fit;
-    camPos.y += Math.cos(t * 0.17) * 1.0 * fit;
-    // 突破那一下震
-    const shake = bump(T, 2.0, 2.22) * 0.7;
-    camPos.x += Math.sin(t * 53) * shake; camPos.y += Math.cos(t * 47) * shake;
-  }
+  // ---------- 時間軸 ----------
+  const C = {
+    nebEnd: 1.5, condense0: 1.6, condense1: 3.0,
+    squeeze0: 3.0, squeeze1: 4.1, pause1: 4.55, burstGap: 0.07, settle: 6.2
+  };
+  const SC_MIN = 0.55;
+  let tI = reduce ? 9 : 0;              // 開場的時間
+  let replayAt = -1;
+  const appearAt = k => k < SQ ? C.condense0 + 0.12 + (C.condense1 - C.condense0 - 0.4) * (k / SQ) : C.pause1 + C.burstGap * (k - SQ);
+  const burstT = C.pause1;
+  let fxDone = false;
 
-  // ---------- 滑到哪、演到哪 ----------
-  const sections = document.querySelectorAll("section");
-  function storyT() {
-    const max = Math.max(1, document.documentElement.scrollHeight - innerHeight);
-    const s = clamp(scrollY / max, 0, 1);
-    const sb = sections[1] ? clamp((sections[1].offsetTop - innerHeight * 0.55) / max, 0.3, 0.72) : 0.5;
-    const A = [[0, 0], [sb * 0.35, 1], [sb, 2], [sb + (1 - sb) * 0.16, 2.35], [sb + (1 - sb) * 0.62, 3.4], [1, 4]];
-    for (let k = 1; k < A.length; k++) {
-      if (s <= A[k][0]) {
-        const [s0, t0] = A[k - 1], [s1, t1] = A[k];
-        return t0 + (t1 - t0) * (s - s0) / Math.max(1e-6, s1 - s0);
-      }
+  function fireBurstFx() {
+    if (flash) { flash.style.transition = "none"; flash.style.opacity = "1"; requestAnimationFrame(() => { flash.style.transition = "opacity 1.1s ease-out"; flash.style.opacity = "0"; }); }
+    if (sweep) { sweep.classList.remove("go"); void sweep.offsetWidth; sweep.classList.add("go"); }
+    // 塵埃炸開
+    const bx = candles[SQ].x, by = 3;
+    for (let i = 0; i < ND; i++) {
+      const i3 = i * 3, dx = D.home[i3] - bx, dy = D.home[i3 + 1] - by, dz = D.home[i3 + 2];
+      const dl = Math.hypot(dx, dy, dz) + 1, f = 1.4 / (1 + dl * 0.08);
+      D.v[i3] += dx / dl * f; D.v[i3 + 1] += dy / dl * f + 0.2; D.v[i3 + 2] += dz / dl * f;
     }
-    return 4;
   }
 
-  // ---------- 手指／滑鼠把粒子推開 ----------
-  const ptr = { x: 0, y: 0, at: -1e9 };
-  const setPtr = (x, y) => { ptr.x = x; ptr.y = y; ptr.at = performance.now(); };
-  addEventListener("pointermove", e => setPtr(e.clientX, e.clientY), { passive: true });
-  addEventListener("pointerdown", e => setPtr(e.clientX, e.clientY), { passive: true });
-  addEventListener("touchmove", e => { const t = e.touches[0]; if (t) setPtr(t.clientX, t.clientY); }, { passive: true });
-
-  // ---------- 尺寸 ----------
-  let W = 1, H = 1;
+  // ---------- 鏡頭 ----------
+  let W = 1, H = 1, aspect = 1, dist = 40, viewY = 0.3;
   function resize() {
     W = canvas.clientWidth; H = canvas.clientHeight;
-    const dpr = Math.min(devicePixelRatio || 1, phone ? 2 : 1.75);
-    renderer.setPixelRatio(dpr);
+    renderer.setPixelRatio(Math.min(devicePixelRatio || 1, quality.dpr));
     renderer.setSize(W, H, false);
-    camera.aspect = W / H;
+    aspect = W / H;
+    camera.aspect = aspect;
+    const spanW = (M - 1) * DX + BW;
+    const fill = aspect >= 1 ? 0.68 : 0.94;
+    dist = Math.max(30, spanW / fill / (2 * Math.tan(THREE.MathUtils.degToRad(17.5)) * aspect));
+    viewY = aspect >= 1 ? 0.36 : 0.27;     // 舞台中心在畫面的高度
+    camera.setViewOffset(W, H, 0, (0.5 - viewY) * H, W, H);
     camera.updateProjectionMatrix();
-    fit = Math.max(1, 1.05 / camera.aspect);
-    pmat.uniforms.uScale.value = H * dpr * 0.26 * fit;
-    pmat.uniforms.uFogNear.value = 80 * fit; pmat.uniforms.uFogFar.value = 220 * fit;
-    scene.fog.near = 80 * fit; scene.fog.far = 220 * fit;
+    pMat.uniforms.uScale.value = H * renderer.getPixelRatio() * 0.22 * (dist / 40);
   }
-  resize();
-  addEventListener("resize", resize);
+  const quality = { dpr: phone ? 1.6 : 1.5, low: false };
+
+  const target = new THREE.Vector3(), camPos = new THREE.Vector3();
+  function orbit(yaw, pitch, d, tx, ty, tz) {
+    target.set(tx, ty, tz);
+    const cy = Math.cos(pitch);
+    camPos.set(tx + Math.sin(yaw) * cy * d, ty + Math.sin(pitch) * d, tz + Math.cos(yaw) * cy * d);
+  }
+
+  // ---------- 滑動 ----------
+  function scrollS() {
+    const max = Math.max(1, document.documentElement.scrollHeight - innerHeight);
+    return clamp(scrollY / max, 0, 1);
+  }
+  const qT = new URLSearchParams(location.search);
+  const lockS = qT.has("s") ? parseFloat(qT.get("s")) : null;
+  if (qT.has("t")) tI = parseFloat(qT.get("t"));
+  const freezeT = qT.has("t");
+  let sCur = lockS ?? scrollS();
+
+  // ---------- 互動 ----------
+  const ptr = { x: -1e4, y: -1e4, at: -1e9, down: false, downAt: 0, dx: 0, dy: 0, still: 0, holdOn: false };
+  const ray = new THREE.Raycaster(), ndc = new THREE.Vector2(), plane = new THREE.Plane(), hit = new THREE.Vector3();
+  function worldAt(x, y, depthPoint) {
+    ndc.set((x / W) * 2 - 1, -(y / H) * 2 + 1);
+    ray.setFromCamera(ndc, camera);
+    plane.setFromNormalAndCoplanarPoint(camera.getWorldDirection(new THREE.Vector3()).negate(), depthPoint);
+    return ray.ray.intersectPlane(plane, hit) ? hit : null;
+  }
+  let lastTrail = null;
+  function spawnTrail(x, y) {
+    const from = lastTrail && performance.now() - lastTrail.at < 120 ? lastTrail : { x, y };
+    const steps = Math.min(24, Math.max(1, Math.round(Math.hypot(x - from.x, y - from.y) / 5)));
+    for (let k = 1; k <= steps; k++) {
+      const p = worldAt(lerp(from.x, x, k / steps), lerp(from.y, y, k / steps), target);
+      if (!p) continue;
+      spark(p.x + (rand() - 0.5) * 0.12, p.y + (rand() - 0.5) * 0.12, p.z, (rand() - 0.5) * 0.3, 0.25 + rand() * 0.3, (rand() - 0.5) * 0.3, 0.9, 1);
+    }
+    lastTrail = { x, y, at: performance.now() };
+  }
+  // 點一下：一圈火花往外炸
+  function sparkBurst(x, y) {
+    const p = worldAt(x, y, target);
+    if (!p) return;
+    for (let k = 0; k < 44; k++) {
+      const a = (k / 44) * 6.283 + rand() * 0.2, sp = 5 + rand() * 4;
+      const ca = Math.cos(a) * sp, sa = Math.sin(a) * sp;
+      spark(p.x, p.y, p.z, right.x * ca + up.x * sa, right.y * ca + up.y * sa, right.z * ca + up.z * sa, 0.75, 1.3);
+    }
+  }
+  // 按住：火花從四周旋進來
+  function sparkVortex(x, y, dt) {
+    const p = worldAt(x, y, target);
+    if (!p) return;
+    const n = Math.max(1, Math.round(dt * 90));
+    for (let k = 0; k < n; k++) {
+      const a = rand() * 6.283, r = 2.2 + rand() * 1.6;
+      const ca = Math.cos(a), sa = Math.sin(a);
+      const ox = right.x * ca * r + up.x * sa * r, oy = right.y * ca * r + up.y * sa * r, oz = right.z * ca * r + up.z * sa * r;
+      // 往內＋繞圈
+      const tx = -ca * 3.2 - sa * 3.6, ty = -sa * 3.2 + ca * 3.6;
+      spark(p.x + ox, p.y + oy, p.z + oz, right.x * tx + up.x * ty, right.y * tx + up.y * ty, right.z * tx + up.z * ty, 0.65, 0.9);
+    }
+  }
+  function onMove(x, y) {
+    if (Math.hypot(x - ptr.x, y - ptr.y) > 6) { ptr.still = performance.now(); ptr.holdOn = false; }
+    ptr.x = x; ptr.y = y; ptr.at = performance.now();
+    if (!reduce) spawnTrail(x, y);
+  }
+  addEventListener("pointermove", e => onMove(e.clientX, e.clientY), { passive: true });
+  addEventListener("touchmove", e => { const t = e.touches[0]; if (t) onMove(t.clientX, t.clientY); }, { passive: true });
+  addEventListener("pointerdown", e => {
+    ptr.down = true; ptr.downAt = ptr.still = performance.now(); ptr.dx = e.clientX; ptr.dy = e.clientY;
+    ptr.x = e.clientX; ptr.y = e.clientY; ptr.at = performance.now();
+  }, { passive: true });
+  const endPress = e => {
+    const quick = performance.now() - ptr.downAt < 260 && Math.hypot(e.clientX - ptr.dx, e.clientY - ptr.dy) < 10;
+    const onUi = e.target && e.target.closest && e.target.closest("a, button, .avatar");
+    if (quick && !onUi && !reduce) tapBurst(e.clientX, e.clientY);
+    ptr.down = false; ptr.holdOn = false;
+  };
+  addEventListener("pointerup", endPress, { passive: true });
+  addEventListener("pointercancel", () => { ptr.down = false; ptr.holdOn = false; }, { passive: true });
+
+  let tapQueue = null;
+  function tapBurst(x, y) { tapQueue = { x, y }; sparkBurst(x, y); }
+
+  // 點頭像再演一次
+  const av = document.querySelector(".avatar");
+  if (av) av.addEventListener("click", () => { if (!reduce && tI > C.condense1) replayAt = performance.now(); });
 
   // ---------- 每一格 ----------
-  const right = new THREE.Vector3(), up = new THREE.Vector3(), fwd = new THREE.Vector3();
-  const PM = new THREE.Matrix4();
-  // 檢查用：網址加 ?T=2.1 就停在那一刻
-  const qT = new URLSearchParams(location.search).get("T");
-  const lockT = qT === null ? null : parseFloat(qT);
-  let Tcur = lockT ?? storyT(), t = 0, last = performance.now();
+  const m4 = new THREE.Matrix4(), q4 = new THREE.Quaternion(), v3 = new THREE.Vector3(), s3 = new THREE.Vector3();
+  const PM = new THREE.Matrix4(), right = new THREE.Vector3(), up = new THREE.Vector3();
+  const boxTop = new Float32Array(NB), boxBot = new Float32Array(NB);   // 每棟現在的上下緣
+  let last = performance.now(), clock = 0, slowFrames = 0, frames = 0, shake = 0, push = 0;
+
+  function setEdges(b, x, z, w, d, y0, y1) {
+    const x0 = x - w / 2, x1 = x + w / 2, z0 = z - d / 2, z1 = z + d / 2;
+    edgePos.set(y1 - y0 < 0.01 ? ZERO72 : [
+      x0, y0, z0, x1, y0, z0, x1, y0, z0, x1, y0, z1, x1, y0, z1, x0, y0, z1, x0, y0, z1, x0, y0, z0,
+      x0, y1, z0, x1, y1, z0, x1, y1, z0, x1, y1, z1, x1, y1, z1, x0, y1, z1, x0, y1, z1, x0, y1, z0,
+      x0, y0, z0, x0, y1, z0, x1, y0, z0, x1, y1, z0, x1, y0, z1, x1, y1, z1, x0, y0, z1, x0, y1, z1], b * 72);
+  }
+  const ZERO72 = new Array(72).fill(0);
+  const qY = new THREE.Quaternion();
+  function setCaustic(b, x, z, w, yMid, h) {
+    if (w <= 0.001 || h <= 0.001) { m4.makeScale(0, 0, 0); caustics.setMatrixAt(b, m4); return; }
+    const t = yMid / -L.y;
+    qY.setFromAxisAngle(THREE.Object3D.DEFAULT_UP, shadowYaw);
+    m4.compose(v3.set(x + L.x * t, 0.025, z + L.z * t), qY, s3.set(w * 0.75, 1, Math.min(4, 0.6 + h * 0.55)));
+    caustics.setMatrixAt(b, m4);
+  }
 
   function frame(now) {
     const dt = Math.min(0.05, (now - last) / 1000); last = now;
-    if (!reduce) t += dt;
-    const Tt = lockT ?? storyT();
-    Tcur += (Tt - Tcur) * (reduce ? 1 : Math.min(1, dt * 5));
-    const T = Tcur;
+    if (!reduce) clock += dt;
+    // 太慢就降畫質
+    frames++;
+    if (frames > 30 && frames < 200 && dt > 0.034) slowFrames++;
+    if (!quality.low && slowFrames > 45) lowerQuality();
 
-    cameraAt(T, t);
+    // 重播：先把整排收掉再重來
+    let shrink = 1;
+    if (replayAt > 0) {
+      const e = (now - replayAt) / 450;
+      shrink = 1 - easeOut(e);
+      if (e >= 1) { replayAt = -1; tI = 0; fxDone = false; shrink = 1; replayGlide = 1.4; }
+    }
+    if (!reduce && !freezeT && replayAt < 0) tI += dt;
+    if (!fxDone && tI >= burstT && tI < burstT + 1) { fxDone = true; if (!reduce) { fireBurstFx(); shake = 1; push = 1; } }
+    if (tI < burstT) fxDone = false;
+
+    const sT = lockS ?? scrollS();
+    sCur += (sT - sCur) * Math.min(1, dt * 6);
+    const s = reduce ? sT : sCur;
+    const grow = sstep(0.04, 0.5, s);       // 長成城市
+    const melt = sstep(0.62, 0.95, s);      // 城市沉下去、回到星雲
+
+    // 開場的壓縮：整排往下壓（漲壓到底），停一下，發抖
+    const sc = lerp(1, SC_MIN, sstep(C.squeeze0, C.squeeze1, tI));
+    const tremble = (tI > C.squeeze1 && tI < burstT) ? (tI - C.squeeze1) / (burstT - C.squeeze1) : 0;
+
+    // 窗光慢慢移動
+    const shift = Math.sin(clock * 0.05) * 2.2;
+    floorMat.uniforms.uShift.value = shift;
+    floorMat.uniforms.uTime.value = clock;
+    sky.material.uniforms.uTime.value = clock;
+    placeBeams(shift);
+    beamMat.uniforms.uA.value = 1 - melt * 0.6;
+
+    // ---------- 玻璃 K 棒、大樓 ----------
+    for (let k = 0; k < M; k++) {
+      const c = candles[k];
+      const at = appearAt(k);
+      let a = k < SQ ? easeOut((tI - at) / 0.35) : (tI >= at ? 1 : 0);   // 突破那幾根一格出現
+      a *= shrink * (1 - sstep(0.62, 0.86, s));
+      const jx = tremble * 0.035 * Math.sin(clock * 70 + k);
+      let b0 = Math.min(c.o, c.c) * sc, b1 = Math.max(c.o, c.c) * sc;
+      if (b1 - b0 < 0.08) b1 = b0 + 0.08;
+      // 城市：往下長到地面、往上長高，最高的就是突破那根
+      const cityTop = (c.hi * sc) * 1.0 + 2.2 + (k >= SQ ? 2.5 : 0);
+      b0 = lerp(b0, 0, grow); b1 = lerp(b1, cityTop, grow);
+      const w = BW * lerp(1, 1.25, grow) * (0.3 + 0.7 * a), d = BD * lerp(1, 1.25, grow) * (0.3 + 0.7 * a);
+      const h = (b1 - b0) * a;
+      const y0 = b0 + (b1 - b0) * (1 - a) * 0.5;
+      const on = a > 0.004 ? 1 : 0;
+      m4.compose(v3.set(c.x + jx, y0, 0), q4, s3.set(w * on, Math.max(0.0001, h) * on, d * on));
+      bodies.setMatrixAt(k, m4);
+      m4.compose(v3.set(c.x + jx, -y0, 0), q4, s3.set(w * on, -Math.max(0.0001, h) * on, d * on));
+      mirror.setMatrixAt(k, m4);
+      setEdges(k, c.x + jx, 0, w, d, y0, y0 + (h > 0.0002 ? h : 0));
+      setOutline(k, c.x + jx, 0, w * on, d * on, y0, y0 + (h > 0.0002 && on ? h : 0));
+      setCaustic(k, c.x + jx, 0, w * on, y0 + h * 0.5, h * on);
+      boxBot[k] = y0; boxTop[k] = y0 + h;
+      // 影線：城市時縮成樓頂的一小段光
+      const wl0 = lerp(c.lo * sc, b1 - 0.02, grow), wl1 = lerp(c.hi * sc, b1 + 0.5, grow);
+      m4.compose(v3.set(c.x + jx, wl0, 0), q4, s3.set(a > 0.01 ? 1 : 0.0001, Math.max(0.0001, (wl1 - wl0) * a), a > 0.01 ? 1 : 0.0001));
+      wicks.setMatrixAt(k, m4);
+      m4.compose(v3.set(c.x + jx, -wl0, 0), q4, s3.set(a > 0.01 ? 1 : 0.0001, -Math.max(0.0001, (wl1 - wl0) * a), a > 0.01 ? 1 : 0.0001));
+      wickMirror.setMatrixAt(k, m4);
+    }
+    for (let j = 0; j < towers.length; j++) {
+      const o = towers[j], b = M + j;
+      const g = sstep(o.t0, o.t0 + 0.32, grow) * (1 - sstep(0.62 + o.t0 * 0.1, 0.84, s)) * shrink;
+      const h = o.h * g;
+      const on = h > 0.01 ? 1 : 0;
+      m4.compose(v3.set(o.x, 0, o.z), q4, s3.set(o.w * on, Math.max(0.0001, h) * on, o.d * on));
+      bodies.setMatrixAt(b, m4);
+      m4.compose(v3.set(o.x, 0, o.z), q4, s3.set(o.w * on, -Math.max(0.0001, h) * on, o.d * on));
+      mirror.setMatrixAt(b, m4);
+      setEdges(b, o.x, o.z, o.w, o.d, 0, h > 0.001 ? h : 0);
+      setOutline(b, o.x, o.z, o.w, o.d, 0, h > 0.01 ? h : 0);
+      setCaustic(b, o.x, o.z, o.w * on, h * 0.5, h * on * 0.6);
+      boxBot[b] = 0; boxTop[b] = h;
+    }
+    bodies.instanceMatrix.needsUpdate = true;
+    mirror.instanceMatrix.needsUpdate = true;
+    wicks.instanceMatrix.needsUpdate = true;
+    wickMirror.instanceMatrix.needsUpdate = true;
+    edgeGeo.attributes.position.needsUpdate = true;
+    outGeo.attributes.position.needsUpdate = true;
+    caustics.instanceMatrix.needsUpdate = true;
+
+    // 突破那一下：玻璃一閃
+    const since = tI - burstT;
+    const glint = since > 0 && since < 1.2 ? Math.exp(-since * 3.2) : 0;
+    glass.envMapIntensity = 1.25 + glint * 2.6;
+    edges.visible = false;
+    ripple.visible = since > 0 && since < 1.6;
+    if (ripple.visible) {
+      const e = since / 1.6;
+      ripple.position.x = candles[SQ].x;
+      ripple.scale.setScalar(0.5 + easeOut(e) * 22);
+      ripple.material.opacity = (1 - e) * 0.75;
+    }
+
+    // ---------- 鏡頭 ----------
+    const intro = sstep(0.3, C.condense1, tI);
+    let yaw = lerp(0.32, 0.06, intro), pitch = lerp(0.42, 0.13, intro), dd = dist * lerp(1.25, 1, intro);
+    let tx = 0, ty = lerp(7.5, 4.8, intro), tz = 0;
+    // 城市：拉高、轉到斜前方
+    yaw = lerp(yaw, -0.42, grow); pitch = lerp(pitch, 0.36, grow); dd *= lerp(1, 1.18, grow); ty = lerp(ty, 5.5, grow); tz = lerp(tz, -4.5, grow);
+    // 滑到底：抬頭看星雲
+    yaw = lerp(yaw, -0.15, melt); pitch = lerp(pitch, -0.05, melt); ty = lerp(ty, 9.5, melt); dd *= lerp(1, 0.95, melt);
+    // 呼吸
+    yaw += Math.sin(clock * 0.13) * 0.035; pitch += Math.sin(clock * 0.11) * 0.015;
+    // 突破：推近、震
+    push = Math.max(0, push - dt * 1.1); shake = Math.max(0, shake - dt * 2.2);
+    dd *= 1 - 0.1 * easeOut(push);
+    orbit(yaw, pitch, dd, tx, ty, tz);
+    if (shake > 0) { camPos.x += Math.sin(clock * 61) * 0.35 * shake; camPos.y += Math.cos(clock * 53) * 0.3 * shake; }
     camera.position.copy(camPos);
-    camera.lookAt(camLook);
+    camera.lookAt(target);
     camera.updateMatrixWorld();
+
+    // 影子跟著光
+    sun.target.position.set(0, 0, -2);
+    sun.position.copy(sun.target.position).addScaledVector(L, -70);
+
+    // ---------- 金塵 ----------
     PM.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
     const e = PM.elements;
-    right.setFromMatrixColumn(camera.matrixWorld, 0);
-    up.setFromMatrixColumn(camera.matrixWorld, 1);
-    fwd.setFromMatrixColumn(camera.matrixWorld, 2);
+    right.setFromMatrixColumn(camera.matrixWorld, 0); up.setFromMatrixColumn(camera.matrixWorld, 1);
+    const active = now - ptr.at < 900;
+    ptr.holdOn = ptr.down && now - ptr.still > 280;
+    const R = Math.min(W, H) * 0.2;
+    const tanHalf = Math.tan(THREE.MathUtils.degToRad(17.5));
+    const nebC = [0, lerp(7.5, 15, melt), lerp(0, -5, melt)];
+    const nebW = Math.max(1 - sstep(C.nebEnd - 0.2, C.condense1, tI), melt);
 
-    updateCity(T);
+    for (let i = 0; i < ND; i++) {
+      const i3 = i * 3, i4 = i * 4;
+      // 星雲
+      const r = D.neb[i4], th = D.neb[i4 + 1] + clock * D.neb[i4 + 3];
+      const nx = Math.cos(th) * r, nzz = Math.sin(th) * r, nh = D.neb[i4 + 2];
+      const tilt = -0.9, ct = Math.cos(tilt), st = Math.sin(tilt);
+      const px0 = nebC[0] + nx, py0 = nebC[1] + nh * ct - nzz * st, pz0 = nebC[2] + nh * st + nzz * ct;
+      // 平常飄在光裡
+      const hx = D.home[i3] + Math.sin(clock * 0.12 + D.ph[i]) * 0.9;
+      const hy = D.home[i3 + 1] + Math.sin(clock * 0.17 + D.ph[i] * 1.3) * 0.7;
+      const hz = D.home[i3 + 2] + Math.cos(clock * 0.1 + D.ph[i]) * 0.8;
 
-    // K 線倒平：沿著最低點那條線往後倒，再沉到地面
-    const flat = sstep(2.45, 2.95, T);
-    const ang = -Math.PI / 2 * flat, ca = Math.cos(ang), sa = Math.sin(ang);
-    const pivot = lerp(chartMin, GROUND, flat);
-    const compress = sstep(1.0, 2.0, T);
-    const burstE = clamp((T - 2.0) / 0.35, 0, 1);
-    const burstAmp = bump(T, 2.0, 2.35);
-
-    const active = performance.now() - ptr.at < 1200;
-    const pnx = (ptr.x / W) * 2 - 1, pny = -(ptr.y / H) * 2 + 1;
-    const R = Math.min(W, H) * 0.22;
-    const tanHalf = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
-
-    for (let i = 0; i < N; i++) {
-      const Ti = T - P.delay[i];
-      let wC = sstep(0.75, 1.15, Ti) * (1 - sstep(2.6, 3.0, Ti));
-      let wY = sstep(2.65, 3.05, Ti) * (1 - sstep(3.5, 3.9, Ti));
-      const sw = wC + wY; if (sw > 1) { wC /= sw; wY /= sw; }
-      const wN = Math.max(0, 1 - wC - wY);
-
-      // 星雲（一直在轉）
-      const n4 = i * 4;
-      const r = P.neb[n4], th = P.neb[n4 + 1] + t * P.neb[n4 + 3], hh = P.neb[n4 + 2] + Math.sin(t * 0.8 + i) * 0.15;
-      const nx = Math.cos(th) * r, nzz = Math.sin(th) * r;
-      const tilt = -1.05, ct = Math.cos(tilt), st = Math.sin(tilt);
-      const ny = hh * ct - nzz * st, nz = hh * st + nzz * ct;
-
-      // K 線
-      const i3 = i * 3;
-      let cx = P.chart[i3], cy = P.chart[i3 + 1], cz = P.chart[i3 + 2];
-      const kk = P.cand[i];
-      if (kk >= 0) {
-        const ra = revealAt(kk);
-        let rv;
-        if (kk < SQ) rv = sstep(ra, ra + 0.12, Ti);
-        else rv = backOut(clamp((T - ra) / 0.16, 0, 1));
-        // 還沒輪到的，擠在頂點，越接近突破擠越緊、抖越兇
-        const hr = lerp(5.5, 0.9, compress), jit = compress * 0.35 * (1 - rv);
-        const hx = apex.x + P.hold[i3] * hr + Math.sin(t * 41 + i) * jit;
-        const hy = apex.y + P.hold[i3 + 1] * hr + Math.cos(t * 37 + i * 1.3) * jit;
-        const hz = P.hold[i3 + 2] * hr;
-        cx = lerp(hx, cx, rv); cy = lerp(hy, cy, rv); cz = lerp(hz, cz, rv);
-        // 突破時整張圖被震開一下
-        if (burstAmp > 0) {
-          const dx = cx - apex.x, dy = cy - apex.y, dl = Math.hypot(dx, dy) + 0.5;
-          cx += dx / dl * burstAmp * 2.4; cy += dy / dl * burstAmp * 2.4;
-        }
-        // 倒平
-        const yy = cy - pivot;
-        const ry = pivot + yy * ca - cz * sa, rz = yy * sa + cz * ca;
-        cy = ry; cz = rz;
+      let x, y, z, alpha = 1;
+      const kk = D.barK[i];
+      if (kk >= 0 && tI < C.condense1 + 0.6 && melt < 0.01) {
+        // 飛進玻璃裡，然後消失
+        const c = candles[kk];
+        const fy = lerp(Math.min(c.o, c.c), Math.max(c.o, c.c), D.bar[i3 + 1]);
+        const go = sstep(C.nebEnd + D.delay[i] * 0.6, appearAt(kk) + 0.15, tI);
+        x = lerp(px0, D.bar[i3], go); y = lerp(py0, fy, go); z = lerp(pz0, D.bar[i3 + 2], go);
+        alpha = 1 - sstep(appearAt(kk) + 0.05, appearAt(kk) + 0.3, tI);
       } else {
-        cx += Math.sin(t * 0.3 + i) * 0.6; cy += Math.cos(t * 0.25 + i * 0.7) * 0.6;
+        const back = kk >= 0 ? sstep(burstT - 0.4, burstT + 1.2, tI) : 1;     // 被吸進去的，突破後從光裡回來
+        const w = nebW;
+        x = lerp(hx, px0, w); y = lerp(hy, py0, w); z = lerp(hz, pz0, w);
+        if (kk >= 0 && melt < 0.01) alpha = back;
       }
 
-      // 城市的燈
-      const c4 = i * 4, bd = buildings[P.city[c4]], g = bh[P.city[c4]] || 0;
-      let yx, yy2, yz;
-      if (P.city[c4 + 3] === 0) {
-        yx = bd.x + P.city[c4 + 1] * bd.w * 0.9; yy2 = GROUND + P.city[c4 + 2] * bd.h * g; yz = bd.z + bd.d / 2 + 0.06;
-      } else {
-        yx = bd.x + P.city[c4 + 1] * bd.w; yy2 = GROUND + bd.h * g + 0.1; yz = bd.z + (P.city[c4 + 2] - 0.5) * bd.d;
-      }
+      // 位置平滑
+      if (!baseInit) { BASE[i3] = x; BASE[i3 + 1] = y; BASE[i3 + 2] = z; }
+      const kS = replayGlide > 0 ? Math.min(1, dt * 2.2) : Math.min(1, dt * 12);
+      BASE[i3] += (x - BASE[i3]) * kS; BASE[i3 + 1] += (y - BASE[i3 + 1]) * kS; BASE[i3 + 2] += (z - BASE[i3 + 2]) * kS;
+      x = BASE[i3]; y = BASE[i3 + 1]; z = BASE[i3 + 2];
 
-      let x = nx * wN + cx * wC + yx * wY;
-      let y = ny * wN + cy * wC + yy2 * wY;
-      let z = nz * wN + cz * wC + yz * wY;
-
-      // 手指推開
-      if (active) {
-        const w = e[3] * x + e[7] * y + e[11] * z + e[15];
-        if (w > 0.1) {
-          const sx = ((e[0] * x + e[4] * y + e[8] * z + e[12]) / w - pnx) * W / 2;
-          const sy = ((e[1] * x + e[5] * y + e[9] * z + e[13]) / w - pny) * H / 2;
-          const d = Math.hypot(sx, sy);
-          if (d < R && d > 0.001) {
-            const f = (1 - d / R) * (1 - d / R) * 9;          // 每格推幾 px
-            const wpp = 2 * w * tanHalf / H;                    // 這個深度一 px 等於多少
-            const k2 = f * wpp / d;
-            P.off[i3] += (right.x * sx + up.x * sy) * k2;
-            P.off[i3 + 1] += (right.y * sx + up.y * sy) * k2;
-            P.off[i3 + 2] += (right.z * sx + up.z * sy) * k2;
+      // 手指：推開／吸過去
+      let ox = D.o[i3], oy = D.o[i3 + 1], oz = D.o[i3 + 2];
+      let vx = D.v[i3], vy = D.v[i3 + 1], vz = D.v[i3 + 2];
+      const wx = x + ox, wy = y + oy, wz = z + oz;
+      if (active || tapQueue) {
+        const ww = e[3] * wx + e[7] * wy + e[11] * wz + e[15];
+        if (ww > 0.1) {
+          const sx = ((e[0] * wx + e[4] * wy + e[8] * wz + e[12]) / ww * 0.5 + 0.5) * W - (tapQueue ? tapQueue.x : ptr.x);
+          const sy = (0.5 - (e[1] * wx + e[5] * wy + e[9] * wz + e[13]) / ww * 0.5) * H - (tapQueue ? tapQueue.y : ptr.y);
+          const dpx = Math.hypot(sx, sy);
+          const wpp = 2 * ww * tanHalf / H;
+          if (tapQueue && dpx < R * 1.4) {
+            const f = (1 - dpx / (R * 1.4)) * 26 * wpp / (dpx + 1);
+            vx += (right.x * sx - up.x * sy) * f; vy += (right.y * sx - up.y * sy) * f; vz += (right.z * sx - up.z * sy) * f;
+          } else if (active && dpx < R && dpx > 0.5) {
+            if (ptr.holdOn) {
+              // 吸過去、繞著轉
+              const f = (1 - dpx / R) * 0.9 * wpp;
+              const tx2 = -sx / dpx, ty2 = -sy / dpx;
+              vx += (right.x * (tx2 - ty2 * 0.8) - up.x * (ty2 + tx2 * 0.8)) * f;
+              vy += (right.y * (tx2 - ty2 * 0.8) - up.y * (ty2 + tx2 * 0.8)) * f;
+              vz += (right.z * (tx2 - ty2 * 0.8) - up.z * (ty2 + tx2 * 0.8)) * f;
+            } else {
+              const f = Math.pow(1 - dpx / R, 2) * 1.6 * wpp / dpx;
+              vx += (right.x * sx - up.x * sy) * f; vy += (right.y * sx - up.y * sy) * f; vz += (right.z * sx - up.z * sy) * f;
+            }
           }
         }
       }
-      P.off[i3] *= 0.94; P.off[i3 + 1] *= 0.94; P.off[i3 + 2] *= 0.94;
-      pos[i3] = x + P.off[i3]; pos[i3 + 1] = y + P.off[i3 + 1]; pos[i3 + 2] = z + P.off[i3 + 2];
+      // 彈回原位
+      vx = vx * 0.9 - ox * 0.012; vy = vy * 0.9 - oy * 0.012; vz = vz * 0.9 - oz * 0.012;
+      ox += vx; oy += vy; oz += vz;
+      D.o[i3] = ox; D.o[i3 + 1] = oy; D.o[i3 + 2] = oz; D.v[i3] = vx; D.v[i3 + 1] = vy; D.v[i3 + 2] = vz;
+      x += ox; y += oy; z += oz;
+      if (y < 0.05) y = 0.05 + (0.05 - y) * 0.3;
 
-      col[i3] = P.cNeb[i3] * wN + P.cChart[i3] * wC + P.cCity[i3] * wY;
-      col[i3 + 1] = P.cNeb[i3 + 1] * wN + P.cChart[i3 + 1] * wC + P.cCity[i3 + 1] * wY;
-      col[i3 + 2] = P.cNeb[i3 + 2] * wN + P.cChart[i3 + 2] * wC + P.cCity[i3 + 2] * wY;
-      const tw = 0.75 + 0.25 * Math.sin(t * 2.2 + i * 1.7);
-      size[i] = (P.sNeb[i] * wN + (kk >= 0 ? (phone ? 1.35 : 1.05) * (kk >= SQ ? 1.3 : 1) : 0.6) * wC + 0.6 * wY) * (0.85 + 0.3 * tw);
-      alpha[i] = (P.aNeb[i] * tw * wN + (kk >= 0 ? 0.95 : 0.45 * tw) * wC + 0.9 * wY);
+      pPos[i3] = x; pPos[i3 + 1] = y; pPos[i3 + 2] = z;
+      // 在窗光裡的比較亮
+      const tt = y / -L.y, fx = x + L.x * tt - shift, fz = z + L.z * tt;
+      const qx = (fx - WIN.x0) / (WIN.x1 - WIN.x0) + ((fz - WIN.z0) / (WIN.z1 - WIN.z0)) * 0.32, qz = (fz - WIN.z0) / (WIN.z1 - WIN.z0);
+      const inBeam = qx > 0 && qx < 1 && qz > 0 && qz < 1 ? 1 : 0;
+      const tw = 0.6 + 0.4 * Math.sin(clock * (1.5 + (i % 7) * 0.2) + D.ph[i]);
+      const col = inBeam ? SUNNY : (i % 3 ? GOLD : GOLD_LT);
+      pCol[i3] = col[0]; pCol[i3 + 1] = col[1]; pCol[i3 + 2] = col[2];
+      pSize[i] = D.size[i] * (inBeam ? 1.5 : 0.9) * (0.85 + 0.25 * tw);
+      pAlpha[i] = alpha * (inBeam ? 1 : lerp(0.16, 0.85, nebW)) * tw * (D.size[i] > 2 ? 0.6 : 1);
     }
-    geo.attributes.position.needsUpdate = true;
-    geo.attributes.aColor.needsUpdate = true;
-    geo.attributes.aSize.needsUpdate = true;
-    geo.attributes.aAlpha.needsUpdate = true;
+    tapQueue = null;
+    baseInit = true;
+    replayGlide = Math.max(0, replayGlide - dt);
 
-    // 衝擊波
-    const showRing = burstE > 0 && burstE < 1;
-    ring.visible = ring2.visible = showRing;
-    if (showRing) {
-      ring.position.copy(apex); ring2.position.copy(apex);
-      ring.quaternion.copy(camera.quaternion); ring2.quaternion.copy(camera.quaternion);
-      ring.scale.setScalar(1 + 24 * backOut(burstE) * fit);
-      ring2.scale.setScalar(1 + 15 * burstE * fit);
-      ring.material.opacity = (1 - burstE) * 0.85;
-      ring2.material.opacity = (1 - burstE) * 0.5;
+    // 光痕
+    if (ptr.holdOn && !reduce) sparkVortex(ptr.x, ptr.y, dt);
+    const drag = Math.pow(0.06, dt);
+    for (let j = 0; j < NT; j++) {
+      const p = ND + j, p3 = p * 3;
+      if (T.life[j] > 0) {
+        T.life[j] = Math.max(0, T.life[j] - dt / T.span[j]);
+        T.x[j] += T.vx[j] * dt; T.y[j] += T.vy[j] * dt; T.z[j] += T.vz[j] * dt;
+        T.vx[j] *= drag; T.vy[j] *= drag; T.vz[j] *= drag;
+      }
+      const lf = T.life[j];
+      pPos[p3] = T.x[j]; pPos[p3 + 1] = T.y[j]; pPos[p3 + 2] = T.z[j];
+      pCol[p3] = 0.96; pCol[p3 + 1] = lerp(0.70, 0.86, lf); pCol[p3 + 2] = lerp(0.30, 0.52, lf);
+      pSize[p] = (2.2 * lf + 0.3) * T.big[j];
+      pAlpha[p] = Math.pow(lf, 1.3);
     }
-    if (flash) flash.style.opacity = (bump(T, 2.0, 2.3) * 0.9).toFixed(3);
-    grid.material.opacity = sstep(2.5, 2.95, T) * (1 - sstep(3.45, 3.85, T)) * 0.8;
-    grid.visible = grid.material.opacity > 0.01;
+    pGeo.attributes.position.needsUpdate = true;
+    pGeo.attributes.aColor.needsUpdate = true;
+    pGeo.attributes.aSize.needsUpdate = true;
+    pGeo.attributes.aAlpha.needsUpdate = true;
 
     renderer.render(scene, camera);
     requestAnimationFrame(frame);
   }
-  requestAnimationFrame(frame);
 
+  function lowerQuality() {
+    quality.low = true; quality.dpr = 1;
+    renderer.shadowMap.enabled = false;
+    sun.castShadow = false;
+    glass.transmission = 0; glass.transparent = true; glass.opacity = 0.42; glass.roughness = 0.1;
+    glass.needsUpdate = true;
+    resize();
+  }
+
+  resize();
+  addEventListener("resize", resize);
+  requestAnimationFrame(frame);
 }
