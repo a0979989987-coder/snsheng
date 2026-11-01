@@ -1,0 +1,359 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Snsheng｜永盛</title>
+<meta name="description" content="永盛（Snsheng）的社群和作品：LINE 社群、Instagram、X、OX 篩選器、合成市場。">
+<meta name="theme-color" content="#0B141D">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Snsheng｜永盛">
+<meta property="og:description" content="21 歲，做合約短線第四年。正在寫《雙極交易法》。">
+<meta property="og:url" content="https://a0979989987-coder.github.io/snsheng/">
+<meta property="og:image" content="https://a0979989987-coder.github.io/snsheng/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" type="image/png" href="icon-180.png">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@1,500&family=Noto+Sans+TC:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy: #223E57;
+    --cream: #F1EADC;
+    --bg: #0B141D;
+    --ink: rgba(241, 234, 220, .94);
+    --ink-2: rgba(241, 234, 220, .58);
+    --ink-3: rgba(241, 234, 220, .34);
+    --line: rgba(241, 234, 220, .11);
+    --card: rgba(241, 234, 220, .045);
+    --card-hover: rgba(241, 234, 220, .085);
+    --line-green: #06C755;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Noto Sans TC", -apple-system, BlinkMacSystemFont, "PingFang TC", "Microsoft JhengHei", "Segoe UI", sans-serif;
+    font-weight: 400;
+    -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
+  }
+  a { color: inherit; text-decoration: none; }
+
+  /* 背景：深藍和米白兩團光，慢慢飄 */
+  .bg { position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; }
+  .orb { position: absolute; border-radius: 50%; filter: blur(70px); will-change: transform; }
+  .orb.a {
+    width: 520px; height: 520px; left: -180px; top: -200px;
+    background: radial-gradient(circle, rgba(52, 96, 136, .75), rgba(34, 62, 87, 0) 70%);
+    animation: driftA 22s ease-in-out infinite alternate;
+  }
+  .orb.b {
+    width: 460px; height: 460px; right: -200px; bottom: -160px;
+    background: radial-gradient(circle, rgba(241, 234, 220, .16), rgba(241, 234, 220, 0) 70%);
+    animation: driftB 26s ease-in-out infinite alternate;
+  }
+  .grain {
+    position: absolute; inset: -50%; opacity: .07; mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  }
+  @keyframes driftA { to { transform: translate(120px, 160px) scale(1.15); } }
+  @keyframes driftB { to { transform: translate(-140px, -220px) scale(1.1); } }
+
+  .wrap {
+    position: relative; z-index: 1;
+    max-width: 460px; margin: 0 auto;
+    padding: calc(56px + env(safe-area-inset-top)) 20px calc(40px + env(safe-area-inset-bottom));
+  }
+
+  /* 右上分享 */
+  .share {
+    position: absolute; top: calc(16px + env(safe-area-inset-top)); right: 16px;
+    width: 40px; height: 40px; border-radius: 50%;
+    display: grid; place-items: center;
+    background: var(--card); border: 1px solid var(--line); color: var(--ink-2);
+    cursor: pointer; transition: background .2s, color .2s, transform .15s;
+    -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+  }
+  .share:hover { background: var(--card-hover); color: var(--ink); }
+  .share:active { transform: scale(.92); }
+  .share svg { width: 18px; height: 18px; }
+
+  /* 頭像 */
+  .hero { text-align: center; }
+  .avatar {
+    position: relative; width: 116px; height: 116px; margin: 0 auto 18px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 50% 22%, #121F2C, #080F16 72%);
+    display: grid; place-items: center;
+    box-shadow: 0 0 0 1px var(--line), 0 18px 50px rgba(0, 0, 0, .45);
+  }
+  .avatar img {
+    width: 86%; height: 86%; object-fit: contain;
+    filter: drop-shadow(0 0 2px rgba(241, 234, 220, .55)) drop-shadow(0 0 7px rgba(241, 234, 220, .28));
+  }
+  .avatar img.photo { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; filter: none; }
+  .avatar .ring {
+    position: absolute; inset: -7px; border-radius: 50%;
+    background: conic-gradient(from 0deg, rgba(241, 234, 220, 0), rgba(241, 234, 220, .55) 22%, rgba(241, 234, 220, 0) 40%, rgba(80, 130, 175, 0) 55%, rgba(80, 130, 175, .7) 75%, rgba(80, 130, 175, 0) 92%);
+    -webkit-mask: radial-gradient(closest-side, transparent calc(100% - 2px), #000 calc(100% - 1.5px));
+            mask: radial-gradient(closest-side, transparent calc(100% - 2px), #000 calc(100% - 1.5px));
+    animation: spin 14s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .name {
+    font-family: "EB Garamond", Georgia, "Times New Roman", serif;
+    font-style: italic; font-weight: 500;
+    font-size: 38px; letter-spacing: .5px; line-height: 1.1;
+  }
+  .sub { margin-top: 6px; font-size: 14px; color: var(--ink-2); letter-spacing: 1px; }
+  .sub i { font-style: normal; color: var(--ink-3); margin: 0 6px; }
+  .bio { margin-top: 14px; font-size: 15px; line-height: 1.75; color: rgba(241, 234, 220, .8); }
+
+  /* 頭像下的小圖示列 */
+  .quick { display: flex; justify-content: center; gap: 12px; margin-top: 22px; }
+  .quick a {
+    width: 44px; height: 44px; border-radius: 50%;
+    display: grid; place-items: center;
+    background: var(--card); border: 1px solid var(--line); color: var(--ink);
+    transition: background .2s, transform .15s;
+  }
+  .quick a:hover { background: var(--card-hover); transform: translateY(-2px); }
+  .quick a:active { transform: scale(.92); }
+  .quick svg { width: 20px; height: 20px; }
+
+  /* 欄位 */
+  section { margin-top: 34px; }
+  h2 {
+    font-size: 12px; font-weight: 500; letter-spacing: 3px;
+    color: var(--ink-3); margin: 0 4px 12px;
+  }
+  .list { display: grid; gap: 10px; }
+  .card {
+    position: relative; display: flex; align-items: center; gap: 14px;
+    min-height: 72px; padding: 14px 16px 14px 14px;
+    border-radius: 18px;
+    background: var(--card); border: 1px solid var(--line);
+    -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+    transition: background .2s, border-color .2s, transform .15s;
+  }
+  a.card:hover { background: var(--card-hover); border-color: rgba(241, 234, 220, .2); }
+  a.card:active { transform: scale(.98); }
+  .ico {
+    flex: none; width: 44px; height: 44px; border-radius: 13px;
+    display: grid; place-items: center;
+    background: rgba(241, 234, 220, .07); color: var(--ink);
+  }
+  .ico svg { width: 22px; height: 22px; }
+  .txt { flex: 1; min-width: 0; }
+  .t { font-size: 16px; font-weight: 500; letter-spacing: .3px; display: flex; align-items: center; gap: 8px; }
+  .t small { font-size: 12px; font-weight: 400; color: var(--ink-3); letter-spacing: 0; }
+  .d { margin-top: 3px; font-size: 13px; line-height: 1.5; color: var(--ink-2); }
+  .go { flex: none; width: 18px; height: 18px; color: var(--ink-3); transition: transform .2s, color .2s; }
+  a.card:hover .go { transform: translate(2px, -2px); color: var(--ink); }
+
+  /* LINE 社群：主要的那張 */
+  .card.feature {
+    background: var(--cream); color: #14222F; border-color: transparent;
+    box-shadow: 0 14px 40px rgba(0, 0, 0, .35);
+    overflow: hidden;
+  }
+  .card.feature:hover { background: #F7F1E6; }
+  .card.feature .ico { background: var(--line-green); color: #fff; }
+  .card.feature .d { color: rgba(20, 34, 47, .62); }
+  .card.feature .go { color: rgba(20, 34, 47, .45); }
+  .card.feature:hover .go { color: #14222F; }
+  .card.feature::after {
+    content: ""; position: absolute; top: 0; bottom: 0; width: 60%; left: -80%;
+    background: linear-gradient(100deg, transparent, rgba(255, 255, 255, .55), transparent);
+    animation: sheen 5.5s ease-in-out 1.6s infinite;
+  }
+  @keyframes sheen { 0% { left: -80%; } 22%, 100% { left: 130%; } }
+
+  .tag {
+    font-size: 11px; font-weight: 500; letter-spacing: 1px;
+    padding: 3px 8px; border-radius: 99px;
+    border: 1px solid rgba(241, 234, 220, .25); color: var(--ink-2);
+  }
+
+  footer { margin-top: 44px; text-align: center; color: var(--ink-3); font-size: 12px; letter-spacing: 1px; }
+  footer img { width: 26px; height: 26px; display: block; margin: 0 auto 10px; opacity: .9;
+    filter: drop-shadow(0 0 2px rgba(241, 234, 220, .5)); }
+
+  .toast {
+    position: fixed; left: 50%; bottom: calc(28px + env(safe-area-inset-bottom)); z-index: 5;
+    transform: translate(-50%, 20px); opacity: 0;
+    padding: 10px 18px; border-radius: 99px;
+    background: var(--cream); color: #14222F; font-size: 14px; font-weight: 500;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, .4);
+    transition: opacity .25s, transform .25s; pointer-events: none;
+  }
+  .toast.on { opacity: 1; transform: translate(-50%, 0); }
+
+  /* 進場：一層一層浮上來 */
+  .rise { opacity: 0; transform: translateY(14px); animation: rise .7s cubic-bezier(.2, .7, .2, 1) forwards; }
+  @keyframes rise { to { opacity: 1; transform: none; } }
+
+  @media (prefers-reduced-motion: reduce) {
+    .orb, .avatar .ring, .card.feature::after { animation: none; }
+    .rise { animation: none; opacity: 1; transform: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="bg" aria-hidden="true"><i class="orb a"></i><i class="orb b"></i><i class="grain"></i></div>
+
+<main class="wrap">
+  <button class="share" type="button" aria-label="分享這個網頁">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7.5 7.5 12 3l4.5 4.5"/><path d="M5 12v6.5A2.5 2.5 0 0 0 7.5 21h9a2.5 2.5 0 0 0 2.5-2.5V12"/></svg>
+  </button>
+
+  <header class="hero">
+    <!-- 換成照片：把檔名改成 photo.jpg，class 加上 photo -->
+    <div class="avatar rise"><span class="ring"></span><img src="avatar.png" alt="Snsheng 頭像"></div>
+    <h1 class="name rise">Snsheng</h1>
+    <p class="sub rise">永盛<i>/</i>雙極交易法</p>
+    <p class="bio rise">21 歲，做合約短線第四年。<br>正在寫一本書，叫《雙極交易法》。</p>
+
+    <nav class="quick rise" aria-label="社群">
+      <a href="#" data-key="line" aria-label="LINE 社群"><svg viewBox="0 0 24 24"><use href="#i-line"/></svg></a>
+      <a href="#" data-key="ig" aria-label="Instagram"><svg viewBox="0 0 24 24"><use href="#i-ig"/></svg></a>
+      <a href="#" data-key="x" aria-label="X"><svg viewBox="0 0 24 24"><use href="#i-x"/></svg></a>
+      <a href="#" data-key="threads" aria-label="Threads"><svg viewBox="0 0 24 24"><use href="#i-threads"/></svg></a>
+      <a href="#" data-key="yt" aria-label="YouTube"><svg viewBox="0 0 24 24"><use href="#i-yt"/></svg></a>
+    </nav>
+  </header>
+
+  <section>
+    <h2 class="rise">找到我</h2>
+    <div class="list">
+      <a class="card feature rise" href="#" data-key="line">
+        <span class="ico"><svg viewBox="0 0 24 24"><use href="#i-line"/></svg></span>
+        <span class="txt"><span class="t">LINE 社群</span><span class="d">加進來，直接找我聊</span></span>
+        <svg class="go" viewBox="0 0 24 24"><use href="#i-go"/></svg>
+      </a>
+      <a class="card rise" href="#" data-key="ig">
+        <span class="ico"><svg viewBox="0 0 24 24"><use href="#i-ig"/></svg></span>
+        <span class="txt"><span class="t">Instagram</span><span class="d">影片和日常</span></span>
+        <svg class="go" viewBox="0 0 24 24"><use href="#i-go"/></svg>
+      </a>
+      <a class="card rise" href="#" data-key="x">
+        <span class="ico"><svg viewBox="0 0 24 24"><use href="#i-x"/></svg></span>
+        <span class="txt"><span class="t">X <small>推特</small></span><span class="d">看盤時隨手寫的</span></span>
+        <svg class="go" viewBox="0 0 24 24"><use href="#i-go"/></svg>
+      </a>
+      <a class="card rise" href="#" data-key="threads">
+        <span class="ico"><svg viewBox="0 0 24 24"><use href="#i-threads"/></svg></span>
+        <span class="txt"><span class="t">Threads</span><span class="d">想到什麼就寫什麼</span></span>
+        <svg class="go" viewBox="0 0 24 24"><use href="#i-go"/></svg>
+      </a>
+      <a class="card rise" href="#" data-key="yt">
+        <span class="ico"><svg viewBox="0 0 24 24"><use href="#i-yt"/></svg></span>
+        <span class="txt"><span class="t">YouTube</span><span class="d">完整的長片</span></span>
+        <svg class="go" viewBox="0 0 24 24"><use href="#i-go"/></svg>
+      </a>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="rise">我做的東西</h2>
+    <div class="list">
+      <a class="card rise" href="https://oxpattern.com" data-key="ox-tw">
+        <span class="ico"><svg viewBox="0 0 24 24"><use href="#i-candle"/></svg></span>
+        <span class="txt"><span class="t">OX 台股 <small>我用 AI 寫的</small></span><span class="d">手畫一個型態，幫你找長得像的台股</span></span>
+        <svg class="go" viewBox="0 0 24 24"><use href="#i-go"/></svg>
+      </a>
+      <a class="card rise" href="https://ox-crypto-independent.vercel.app" data-key="ox-crypto">
+        <span class="ico"><svg viewBox="0 0 24 24"><use href="#i-coin"/></svg></span>
+        <span class="txt"><span class="t">OX 加密</span><span class="d">加密貨幣版，24 小時跟著行情跑</span></span>
+        <svg class="go" viewBox="0 0 24 24"><use href="#i-go"/></svg>
+      </a>
+      <a class="card rise" href="https://merge-market.btcfly.chatgpt.site" data-key="merge">
+        <span class="ico"><svg viewBox="0 0 24 24"><use href="#i-merge"/></svg></span>
+        <span class="txt"><span class="t">合成市場</span><span class="d">股票和加密幣的合成小遊戲</span></span>
+        <svg class="go" viewBox="0 0 24 24"><use href="#i-go"/></svg>
+      </a>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="rise">正在寫</h2>
+    <div class="list">
+      <div class="card rise">
+        <span class="ico"><svg viewBox="0 0 24 24"><use href="#i-book"/></svg></span>
+        <span class="txt"><span class="t">《雙極交易法》<span class="tag">寫作中</span></span><span class="d">大約 550 頁，寫完會放在這裡</span></span>
+      </div>
+    </div>
+  </section>
+
+  <footer class="rise">
+    <img src="avatar.png" alt="">
+    © 2026 Snsheng
+  </footer>
+</main>
+
+<div class="toast" role="status" aria-live="polite"></div>
+
+<!-- 圖示 -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-go" viewBox="0 0 24 24"><path d="M7 17 17 7M9 7h8v8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-ig" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3.2" y="3.2" width="17.6" height="17.6" rx="5.2"/><circle cx="12" cy="12" r="4.1"/></g><circle cx="17.2" cy="6.8" r="1.1" fill="currentColor"/></symbol>
+  <symbol id="i-x" viewBox="-2.5 -2.5 29 29"><path fill="currentColor" d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932ZM17.61 20.644h2.039L6.486 3.24H4.298Z"/></symbol>
+  <symbol id="i-threads" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" d="M17.6 7.6C16.4 4.9 14.4 3.5 12 3.5c-4.6 0-7.6 3.5-7.6 8.5s3 8.5 7.6 8.5c3.6 0 6.3-2 6.6-5 .3-2.9-1.8-4.6-5-4.6-2.6 0-4 1.1-4 2.6 0 1.4 1.2 2.3 2.9 2.2 2.6-.2 3.8-2.1 3.6-6.3"/></symbol>
+  <symbol id="i-yt" viewBox="0 0 24 24"><rect x="2.6" y="5.4" width="18.8" height="13.2" rx="4" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M10.3 9.2v5.6l4.8-2.8Z" fill="currentColor"/></symbol>
+  <symbol id="i-line" viewBox="0 0 24 24"><path fill="currentColor" d="M12 3.6c-5 0-9.1 3.3-9.1 7.4 0 3.6 3.2 6.7 7.6 7.3.3.1.7.2.8.5.1.2.1.6 0 .9l-.1.8c0 .2-.2.9.8.5s5.4-3.2 7.4-5.4c1.4-1.5 2-3 2-4.6 0-4.1-4.1-7.4-9.4-7.4Z"/><g fill="none" stroke="#06C755" stroke-width="1.15" stroke-linecap="round" stroke-linejoin="round"><path d="M6.6 9.2v3.5h2"/><path d="M10.1 9.2v3.5"/><path d="M11.7 12.7V9.2l2.6 3.5V9.2"/><path d="M17.6 9.2h-1.9v3.5h1.9M15.7 10.95h1.8"/></g></symbol>
+  <symbol id="i-candle" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M7 3.5v3M7 15.5v3"/><rect x="5" y="6.5" width="4" height="9" rx="1"/><path d="M15.5 6v4M15.5 17.5v3"/><rect x="13.5" y="10" width="4" height="7.5" rx="1" fill="currentColor"/></g></symbol>
+  <symbol id="i-coin" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.6"/><path d="M9.6 7.8h3.3a2 2 0 0 1 0 4H9.6Zm0 4h3.9a2.1 2.1 0 0 1 0 4.2H9.6ZM9.6 7.8v8.4M11.2 6.3v1.5M11.2 16.2v1.5"/></g></symbol>
+  <symbol id="i-merge" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="9" cy="14" r="5.6"/><circle cx="16.4" cy="8" r="3.6"/></g><circle cx="9" cy="14" r="2" fill="currentColor"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M3.5 5.6c2.9-1 5.7-.7 8.5 1.1v13c-2.8-1.8-5.6-2.1-8.5-1.1Z"/><path d="M20.5 5.6c-2.9-1-5.7-.7-8.5 1.1v13c2.8-1.8 5.6-2.1 8.5-1.1Z"/></g></symbol>
+</svg>
+
+<script>
+  // 網址都在這裡改。空字串＝還沒設定，點了會提示。
+  const LINKS = {
+    line: "",      // LINE 社群邀請連結，例如 https://line.me/ti/g2/xxxx
+    ig: "",        // https://www.instagram.com/帳號/
+    x: "",         // https://x.com/帳號
+    threads: "",   // https://www.threads.net/@帳號
+    yt: ""         // https://www.youtube.com/@頻道
+  };
+
+  const toast = document.querySelector(".toast");
+  let toastTimer;
+  function say(msg) {
+    toast.textContent = msg;
+    toast.classList.add("on");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove("on"), 1800);
+  }
+
+  document.querySelectorAll("a[data-key]").forEach(a => {
+    const key = a.dataset.key;
+    if (key in LINKS) {
+      if (LINKS[key]) a.href = LINKS[key];
+      else a.addEventListener("click", e => { e.preventDefault(); say("這個連結還沒開放"); });
+    }
+    if (a.href && !a.href.endsWith("#")) { a.target = "_blank"; a.rel = "noopener"; }
+  });
+
+  // 進場一層一層浮上來
+  document.querySelectorAll(".rise").forEach((el, i) => { el.style.animationDelay = (0.06 * i) + "s"; });
+
+  // 分享：手機叫出分享選單，電腦就複製網址
+  document.querySelector(".share").addEventListener("click", async () => {
+    const data = { title: document.title, url: location.href };
+    if (navigator.share) {
+      try { await navigator.share(data); } catch (e) {}
+      return;
+    }
+    try { await navigator.clipboard.writeText(location.href); say("網址已複製"); }
+    catch (e) { say(location.href); }
+  });
+</script>
+</body>
+</html>
