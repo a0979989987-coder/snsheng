@@ -513,7 +513,8 @@ function start() {
   }
 
   function frame(now) {
-    const dt = Math.min(0.05, (now - last) / 1000); last = now;
+    const rawDt = Math.min(0.12, (now - last) / 1000); last = now;
+    const dt = Math.min(0.05, rawDt);
     if (!reduce) clock += dt;
     // 太慢就降畫質
     frames++;
@@ -527,7 +528,7 @@ function start() {
       shrink = 1 - easeOut(e);
       if (e >= 1) { replayAt = -1; tI = 0; fxDone = false; shrink = 1; replayGlide = 1.4; }
     }
-    if (!reduce && !freezeT && replayAt < 0) tI += dt;
+    if (!reduce && !freezeT && replayAt < 0) tI += rawDt;   // 開場照真實時間走，慢的手機也準時演到突破
     if (!fxDone && tI >= burstT && tI < burstT + 1) { fxDone = true; if (!reduce) { fireBurstFx(); shake = 1; push = 1; } }
     if (tI < burstT) fxDone = false;
 
