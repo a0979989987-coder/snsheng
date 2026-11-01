@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Snsheng</title>
 <meta name="description" content="Snsheng 的社群和作品：LINE 社群、Instagram、X、OX 篩選器、合成市場。">
-<meta name="theme-color" content="#08101A">
+<meta name="theme-color" content="#ffffff">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Snsheng">
 <meta property="og:description" content="21 歲，做合約短線第四年。正在寫《雙極交易法》。">
@@ -19,22 +19,22 @@
 <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@1,500&family=Noto+Sans+TC:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root {
-    --navy: #223E57;
-    --cream: #F1EADC;
-    --bg: #08101A;
-    --ink: rgba(241, 234, 220, .94);
-    --ink-2: rgba(241, 234, 220, .58);
-    --ink-3: rgba(241, 234, 220, .34);
-    --line: rgba(241, 234, 220, .11);
-    --card: rgba(241, 234, 220, .045);
-    --card-hover: rgba(241, 234, 220, .085);
+    --ink: #30343b;
+    --ink-2: #636b77;
+    --ink-3: #9aa1ab;
+    --line: #e1e6ec;
+    --gold: #8d712e;
+    --champagne-line: #d8bc83;
+    --card: rgba(255, 255, 255, .36);
+    --card-hover: rgba(255, 255, 255, .88);
+    --shadow: 0 8px 28px rgba(83, 97, 116, .08), inset 0 1px 0 #fff;
     --line-green: #06C755;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html { -webkit-text-size-adjust: 100%; }
   body {
     min-height: 100vh;
-    background: var(--bg);
+    background: #fff;
     color: var(--ink);
     font-family: "Noto Sans TC", -apple-system, BlinkMacSystemFont, "PingFang TC", "Microsoft JhengHei", "Segoe UI", sans-serif;
     font-weight: 400;
@@ -43,12 +43,17 @@
   }
   a { color: inherit; text-decoration: none; }
 
-  /* 背景：畫布畫 K 線、均線、極光、浮點（bg.js） */
-  .bg { position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; }
+  /* 背景：白金底，上面是 story.js 畫的 3D 一鏡到底 */
+  .bg {
+    position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: 0;
+    background:
+      radial-gradient(120% 55% at 50% 0%, #f6eddc 0%, rgba(246, 237, 220, 0) 60%),
+      linear-gradient(180deg, #ffffff 0%, #f7f9fc 55%, #ecf1f8 100%);
+  }
   .bg canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
-  .grain {
-    position: absolute; inset: -50%; opacity: .07; mix-blend-mode: overlay;
-    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  #flash {
+    position: fixed; inset: 0; z-index: 0; pointer-events: none; opacity: 0;
+    background: radial-gradient(circle at 62% 48%, rgba(232, 196, 110, .55), rgba(232, 196, 110, 0) 62%);
   }
 
   .wrap {
@@ -63,6 +68,7 @@
     width: 40px; height: 40px; border-radius: 50%;
     display: grid; place-items: center;
     background: var(--card); border: 1px solid var(--line); color: var(--ink-2);
+    box-shadow: var(--shadow);
     cursor: pointer; transition: background .2s, color .2s, transform .15s;
     -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
   }
@@ -74,21 +80,14 @@
   .hero { text-align: center; }
   .avatar {
     position: relative; width: 116px; height: 116px; margin: 0 auto 18px;
-    border-radius: 50%;
-    background: #F5D417;
-    display: grid; place-items: center;
-    box-shadow: 0 0 0 1px rgba(255, 214, 90, .25), 0 0 70px rgba(255, 196, 40, .28), 0 18px 50px rgba(0, 0, 0, .45);
+    border-radius: 50%; background: #F5D417;
+    box-shadow: 0 0 0 4px #fff, 0 0 0 5px rgba(216, 188, 131, .7), 0 18px 40px rgba(141, 113, 46, .22), 0 0 70px rgba(233, 214, 171, .9);
   }
-  .avatar img {
-    width: 86%; height: 86%; object-fit: contain;
-    filter: drop-shadow(0 0 2px rgba(241, 234, 220, .55)) drop-shadow(0 0 7px rgba(241, 234, 220, .28));
-  }
-  .avatar img.photo { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; filter: none; transform: scale(1.04); }
-  .avatar { overflow: visible; }
   .avatar .clip { position: absolute; inset: 0; border-radius: 50%; overflow: hidden; }
+  .avatar img { width: 100%; height: 100%; object-fit: cover; display: block; transform: scale(1.04); }
   .avatar .ring {
-    position: absolute; inset: -7px; border-radius: 50%;
-    background: conic-gradient(from 0deg, rgba(255, 214, 90, 0), rgba(255, 214, 90, .75) 22%, rgba(255, 214, 90, 0) 40%, rgba(80, 150, 210, 0) 55%, rgba(80, 150, 210, .7) 75%, rgba(80, 150, 210, 0) 92%);
+    position: absolute; inset: -11px; border-radius: 50%;
+    background: conic-gradient(from 0deg, rgba(184, 145, 63, 0), rgba(184, 145, 63, .85) 22%, rgba(184, 145, 63, 0) 40%, rgba(127, 166, 214, 0) 55%, rgba(127, 166, 214, .8) 75%, rgba(127, 166, 214, 0) 92%);
     -webkit-mask: radial-gradient(closest-side, transparent calc(100% - 2px), #000 calc(100% - 1.5px));
             mask: radial-gradient(closest-side, transparent calc(100% - 2px), #000 calc(100% - 1.5px));
     animation: spin 14s linear infinite;
@@ -98,11 +97,11 @@
   .name {
     font-family: "EB Garamond", Georgia, "Times New Roman", serif;
     font-style: italic; font-weight: 500;
-    font-size: 38px; letter-spacing: .5px; line-height: 1.1;
+    font-size: 40px; letter-spacing: .5px; line-height: 1.1;
+    text-shadow: 0 0 18px #fff, 0 0 6px #fff;
   }
-  .sub { margin-top: 6px; font-size: 14px; color: var(--ink-2); letter-spacing: 1px; }
-  .sub i { font-style: normal; color: var(--ink-3); margin: 0 6px; }
-  .bio { margin-top: 14px; font-size: 15px; line-height: 1.75; color: rgba(241, 234, 220, .8); }
+  .sub { margin-top: 6px; font-size: 13px; color: var(--gold); letter-spacing: 3px; text-shadow: 0 0 10px #fff; }
+  .bio { margin-top: 14px; font-size: 15px; line-height: 1.75; color: #3d424a; text-shadow: 0 0 12px #fff, 0 0 4px #fff; }
 
   /* 頭像下的小圖示列 */
   .quick { display: flex; justify-content: center; gap: 12px; margin-top: 22px; }
@@ -110,9 +109,11 @@
     width: 44px; height: 44px; border-radius: 50%;
     display: grid; place-items: center;
     background: var(--card); border: 1px solid var(--line); color: var(--ink);
-    transition: background .2s, transform .15s;
+    box-shadow: var(--shadow);
+    -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+    transition: background .2s, transform .15s, border-color .2s;
   }
-  .quick a:hover { background: var(--card-hover); transform: translateY(-2px); }
+  .quick a:hover { background: var(--card-hover); border-color: var(--champagne-line); transform: translateY(-2px); }
   .quick a:active { transform: scale(.92); }
   .quick svg { width: 20px; height: 20px; }
 
@@ -120,47 +121,48 @@
   section { margin-top: 34px; }
   h2 {
     font-size: 12px; font-weight: 500; letter-spacing: 3px;
-    color: var(--ink-2); margin: 0 4px 12px;
-    text-shadow: 0 1px 8px rgba(8, 16, 26, .9);
+    color: var(--gold); margin: 0 4px 12px;
+    text-shadow: 0 0 10px #fff, 0 0 4px #fff;
   }
   .list { display: grid; gap: 10px; }
   .card {
     position: relative; display: flex; align-items: center; gap: 14px;
     min-height: 72px; padding: 14px 16px 14px 14px;
     border-radius: 18px;
-    background: var(--card); border: 1px solid var(--line);
-    -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+    background: var(--card); border: 1px solid rgba(221, 225, 230, .9);
+    box-shadow: var(--shadow);
+    -webkit-backdrop-filter: blur(2px) saturate(1.3); backdrop-filter: blur(2px) saturate(1.3);
     transition: background .2s, border-color .2s, transform .15s;
   }
-  a.card:hover { background: var(--card-hover); border-color: rgba(241, 234, 220, .2); }
+  a.card:hover { background: var(--card-hover); border-color: var(--champagne-line); }
   a.card:active { transform: scale(.98); }
   .ico {
     flex: none; width: 44px; height: 44px; border-radius: 13px;
     display: grid; place-items: center;
-    background: rgba(241, 234, 220, .07); color: var(--ink);
+    background: rgba(255, 255, 255, .85); border: 1px solid #e8ecf1; color: var(--ink);
   }
   .ico svg { width: 22px; height: 22px; }
-  .txt { flex: 1; min-width: 0; }
+  .txt { flex: 1; min-width: 0; text-shadow: 0 0 6px rgba(255, 255, 255, .95), 0 0 2px #fff; }
   .t { font-size: 16px; font-weight: 500; letter-spacing: .3px; display: flex; align-items: center; gap: 8px; }
   .t small { font-size: 12px; font-weight: 400; color: var(--ink-3); letter-spacing: 0; }
   .d { margin-top: 3px; font-size: 13px; line-height: 1.5; color: var(--ink-2); }
   .go { flex: none; width: 18px; height: 18px; color: var(--ink-3); transition: transform .2s, color .2s; }
-  a.card:hover .go { transform: translate(2px, -2px); color: var(--ink); }
+  a.card:hover .go { transform: translate(2px, -2px); color: var(--gold); }
 
-  /* LINE 社群：主要的那張 */
+  /* LINE 社群：主要的那張，香檳金 */
   .card.feature {
-    background: var(--cream); color: #14222F; border-color: transparent;
-    box-shadow: 0 14px 40px rgba(0, 0, 0, .35);
+    background: linear-gradient(135deg, #fcf7ec, #efdfb9);
+    border-color: #e2c98f; color: var(--ink);
+    box-shadow: 0 12px 32px rgba(141, 113, 46, .18), inset 0 1px 0 #fff;
     overflow: hidden;
   }
-  .card.feature:hover { background: #F7F1E6; }
-  .card.feature .ico { background: var(--line-green); color: #fff; }
-  .card.feature .d { color: rgba(20, 34, 47, .62); }
-  .card.feature .go { color: rgba(20, 34, 47, .45); }
-  .card.feature:hover .go { color: #14222F; }
+  .card.feature:hover { background: linear-gradient(135deg, #fffaf0, #f3e5c4); }
+  .card.feature .ico { background: var(--line-green); border-color: transparent; color: #fff; }
+  .card.feature .d { color: #7a6a48; }
+  .card.feature .go { color: var(--gold); }
   .card.feature::after {
     content: ""; position: absolute; top: 0; bottom: 0; width: 60%; left: -80%;
-    background: linear-gradient(100deg, transparent, rgba(255, 255, 255, .55), transparent);
+    background: linear-gradient(100deg, transparent, rgba(255, 255, 255, .75), transparent);
     animation: sheen 5.5s ease-in-out 1.6s infinite;
   }
   @keyframes sheen { 0% { left: -80%; } 22%, 100% { left: 130%; } }
@@ -168,18 +170,18 @@
   .tag {
     font-size: 11px; font-weight: 500; letter-spacing: 1px;
     padding: 3px 8px; border-radius: 99px;
-    border: 1px solid rgba(241, 234, 220, .25); color: var(--ink-2);
+    border: 1px solid var(--champagne-line); color: var(--gold); background: rgba(246, 237, 220, .6);
   }
 
-  footer { margin-top: 44px; text-align: center; color: var(--ink-3); font-size: 12px; letter-spacing: 1px; }
-  footer img { width: 26px; height: 26px; display: block; margin: 0 auto 10px; border-radius: 50%; opacity: .9; }
+  footer { margin-top: 44px; text-align: center; color: var(--ink-3); font-size: 12px; letter-spacing: 1px; text-shadow: 0 0 8px #fff; }
+  footer img { width: 26px; height: 26px; display: block; margin: 0 auto 10px; border-radius: 50%; }
 
   .toast {
     position: fixed; left: 50%; bottom: calc(28px + env(safe-area-inset-bottom)); z-index: 5;
     transform: translate(-50%, 20px); opacity: 0;
     padding: 10px 18px; border-radius: 99px;
-    background: var(--cream); color: #14222F; font-size: 14px; font-weight: 500;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, .4);
+    background: var(--ink); color: #fff; font-size: 14px; font-weight: 500;
+    box-shadow: 0 10px 30px rgba(48, 52, 59, .25);
     transition: opacity .25s, transform .25s; pointer-events: none;
   }
   .toast.on { opacity: 1; transform: translate(-50%, 0); }
@@ -196,7 +198,8 @@
 </head>
 <body>
 
-<div class="bg" aria-hidden="true"><canvas id="bg"></canvas><i class="grain"></i></div>
+<div class="bg" aria-hidden="true"><canvas id="bg"></canvas></div>
+<div id="flash" aria-hidden="true"></div>
 
 <main class="wrap">
   <button class="share" type="button" aria-label="分享這個網頁">
@@ -204,7 +207,7 @@
   </button>
 
   <header class="hero">
-    <div class="avatar rise"><span class="ring"></span><span class="clip"><img class="photo" src="avatar.jpg" alt="Snsheng 頭像"></span></div>
+    <div class="avatar rise"><span class="ring"></span><span class="clip"><img src="avatar.jpg" alt="Snsheng 頭像"></span></div>
     <h1 class="name rise">Snsheng</h1>
     <p class="sub rise">雙極交易法</p>
     <p class="bio rise">21 歲，做合約短線第四年。<br>正在寫一本書，叫《雙極交易法》。</p>
@@ -302,10 +305,8 @@
   <symbol id="i-book" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M3.5 5.6c2.9-1 5.7-.7 8.5 1.1v13c-2.8-1.8-5.6-2.1-8.5-1.1Z"/><path d="M20.5 5.6c-2.9-1-5.7-.7-8.5 1.1v13c2.8-1.8 5.6-2.1 8.5-1.1Z"/></g></symbol>
 </svg>
 
-<script src="bg.js"></script>
+<script type="module" src="story.js"></script>
 <script>
-  startBg(document.getElementById("bg"));
-
   // 網址都在這裡改。空字串＝還沒設定，點了會提示。
   const LINKS = {
     line: "https://line.me/ti/g2/FXj0yahd04U4JecSoC4uPInXiqhLulqdCl54Ag",  // OX.Trading AI 討論群
