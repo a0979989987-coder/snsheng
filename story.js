@@ -391,7 +391,7 @@ function start() {
     aspect = W / H;
     camera.aspect = aspect;
     const spanW = (M - 1) * DX + BW;
-    const fill = aspect >= 1 ? 0.68 : 0.94;
+    const fill = aspect >= 1 ? 0.68 : 0.86;
     dist = Math.max(30, spanW / fill / (2 * Math.tan(THREE.MathUtils.degToRad(17.5)) * aspect));
     viewY = aspect >= 1 ? 0.36 : 0.27;     // 舞台中心在畫面的高度
     camera.setViewOffset(W, H, 0, (0.5 - viewY) * H, W, H);
