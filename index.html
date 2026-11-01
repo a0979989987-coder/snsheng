@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Snsheng</title>
 <meta name="description" content="Snsheng 的社群、作品和雙極交易法：LINE 社群、Instagram、Threads、YouTube、OX 篩選器、合成市場。">
-<meta name="theme-color" content="#fbf8f2">
+<meta name="theme-color" content="#09131e">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Snsheng">
 <meta property="og:description" content="21 歲，做合約短線第四年。正在寫《雙極交易法》。">
@@ -20,10 +20,10 @@
 <style>
   /* 顏色由 site.js 依「陽→陰」的進度設定 */
   :root {
-    --bgA: #fbf8f2; --bgB: #eef2f7;
-    --fg: #30343b; --fg2: #636b77; --fg3: #9aa1ab;
-    --card: rgba(255, 255, 255, .62); --cardline: rgba(221, 225, 230, .9);
-    --gold: #8d712e; --glow: rgba(255, 255, 255, .9);
+    --bgA: #09131e; --bgB: #0f1e2e;
+    --fg: #efe7d6; --fg2: #a8b6c6; --fg3: #7a8a9c;
+    --card: rgba(16, 30, 46, .66); --cardline: rgba(241, 234, 220, .14);
+    --gold: #e0be74; --glow: rgba(9, 19, 30, .9);
     --line-green: #06C755;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -41,6 +41,13 @@
   #flash { position: fixed; inset: 0; z-index: 2; pointer-events: none; opacity: 0;
     background: radial-gradient(circle at 50% 38%, rgba(240, 200, 110, .55), rgba(240, 200, 110, 0) 62%); }
   main { position: relative; z-index: 3; }
+  #ptext {
+    position: fixed; z-index: 2; pointer-events: none; opacity: 0; transform: translate(-50%, -50%);
+    font-family: "Noto Serif TC", serif; font-weight: 700; text-align: center; white-space: nowrap; line-height: 1.24;
+    background: linear-gradient(180deg, #fff3cf 0%, #e9c46f 55%, #b8862e 100%); -webkit-background-clip: text; background-clip: text; color: transparent;
+    filter: drop-shadow(0 0 10px rgba(233, 196, 111, .45));
+  }
+  #ptext span { transition: opacity .35s; }
 
   /* 右上角：聲音、分享 */
   .topbtns { position: fixed; z-index: 6; top: calc(14px + env(safe-area-inset-top)); right: 14px; display: flex; gap: 8px; }
@@ -190,6 +197,7 @@
 <div id="bgfix" aria-hidden="true"></div>
 <canvas id="gl" aria-hidden="true"></canvas>
 <div id="flash" aria-hidden="true"></div>
+<div id="ptext" aria-hidden="true"></div>
 
 <div class="topbtns">
   <button class="ibtn" id="soundBtn" type="button" aria-label="聲音開關">
@@ -237,21 +245,6 @@
     </div>
   </section>
 
-  <!-- 人生 K 線 -->
-  <section class="story" id="life" data-shape="life" style="height: 460vh">
-    <div class="sticky">
-      <div class="copy caps">
-        <p class="kicker">人生 K 線</p>
-        <div class="cap" data-at="0"><b>如果 Snsheng 是一檔股票</b><span>往下滑，K 線一根一根長出來。</span><small>走勢是示意，不是真實數字。</small></div>
-        <div class="cap" data-at="0.17"><b>2023/1/4</b><span>帶 5,000 元進幣圈。</span></div>
-        <div class="cap" data-at="0.35"><b>2023</b><span>創交易群，當群長。</span></div>
-        <div class="cap" data-at="0.52"><b>大回撤</b><span>一段很深的回撤。</span></div>
-        <div class="cap" data-at="0.7"><b>2026</b><span>用 AI 做出 OX。</span></div>
-        <div class="cap" data-at="0.92"><b>現在</b><span>開始寫《雙極交易法》。</span></div>
-      </div>
-    </div>
-  </section>
-
   <!-- 雙極交易法：天秤三態 -->
   <section class="story" id="balance" data-shape="balance" style="height: 340vh">
     <div class="sticky">
@@ -276,6 +269,21 @@
     </div>
   </section>
 
+  <!-- 雙極交易法：突破進場（黑白分割） -->
+  <section class="story" id="breakout" data-shape="breakout" style="height: 560vh">
+    <div class="sticky">
+      <div class="copy caps">
+        <p class="kicker">雙極交易法｜突破進場</p>
+        <div class="cap" data-at="0"><b>頂分型形成頂</b><span>第 1 根上漲，第 2 根突破第 1 根高點，第 3 根跌破第 2 根低點。</span></div>
+        <div class="cap" data-at="0.22"><b>回撤盤整</b><span>頂形成之後，價格回撤盤整。</span></div>
+        <div class="cap" data-at="0.42"><b>突破</b><span>突破和跌破一樣，影線碰到就算。</span></div>
+        <div class="cap" data-at="0.56"><b>突破進場</b><span>止損通常放在結構的底。</span></div>
+        <div class="cap" data-at="0.68"><b>新結構</b><span>頂被突破，就是新結構。</span></div>
+        <div class="cap" data-at="0.93"><b>假突破</b><span>突破後又跌破結構的底＝假突破。</span></div>
+      </div>
+    </div>
+  </section>
+
   <!-- 書 -->
   <section class="panel" id="book" data-shape="book">
     <div class="copy">
@@ -287,10 +295,10 @@
   </section>
 
   <!-- 金句 -->
-  <section class="panel quote" data-shape="q0"><div class="copy"><p class="qtext">選擇不做什麼比做什麼重要</p><p class="qsign">Snsheng</p></div></section>
-  <section class="panel quote" data-shape="q1"><div class="copy"><p class="qtext">是敬畏不是預測</p><p class="qsign">Snsheng</p></div></section>
-  <section class="panel quote" data-shape="q2"><div class="copy"><p class="qtext">像由心生</p><p class="qsign">Snsheng</p></div></section>
-  <section class="panel quote" data-shape="q3"><div class="copy"><p class="qpre">十年後，希望別人想到我的時候會說</p><p class="qtext">這個人，讓我開始用不同的方式思考世界</p></div></section>
+  <section class="panel quote" data-shape="q0"><div class="copy"><p class="qsign">Snsheng</p></div></section>
+  <section class="panel quote" data-shape="q1"><div class="copy"><p class="qsign">Snsheng</p></div></section>
+  <section class="panel quote" data-shape="q2"><div class="copy"><p class="qsign">Snsheng</p></div></section>
+  <section class="panel quote" data-shape="q3"><div class="copy"><p class="qpre">十年後，希望別人想到我的時候會說</p><p class="qsign">Snsheng</p></div></section>
 
   <!-- OX -->
   <section class="panel" id="ox" data-shape="ox">
