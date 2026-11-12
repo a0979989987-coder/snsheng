@@ -12,6 +12,7 @@
 <meta property="og:url" content="https://a0979989987-coder.github.io/snsheng/">
 <meta property="og:image" content="https://a0979989987-coder.github.io/snsheng/og.png">
 <meta name="twitter:card" content="summary_large_image">
+<script>document.documentElement.classList.add("js")</script>
 <link rel="icon" type="image/png" href="icon-180.png">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -54,6 +55,18 @@
     filter: drop-shadow(0 0 10px rgba(233, 196, 111, .45));
   }
   #ptext span { transition: opacity .35s; }
+  #ptext.svg { background: none; -webkit-background-clip: border-box; background-clip: border-box; }
+  #ptext.svg svg { display: block; width: 100%; height: 100%; overflow: visible; }
+  /* 主角旁邊的小標籤（多方、空方、燃料、慣性、牆、時間級別） */
+  #plabels { position: fixed; inset: 0; z-index: 2; pointer-events: none; }
+  #plabels .pl {
+    position: absolute; left: 0; top: 0; opacity: 0; white-space: nowrap; margin: -10px 0 0 0; translate: -50% 0;
+    font-size: 12px; letter-spacing: 2px; line-height: 20px; color: var(--gold);
+    text-shadow: 0 0 8px var(--glow), 0 0 3px var(--glow), 0 0 1px var(--glow);
+  }
+  #plabels .pl.l { translate: 0 0; }
+  #plabels .pl.r { translate: 0 0; margin-left: 6px; }
+  .sig .pen { fill: #fff3cf; opacity: 0; filter: drop-shadow(0 0 4px #ffe1a0); }
 
   /* 右上角：聲音、分享 */
   .topbtns { position: fixed; z-index: 6; top: calc(14px + env(safe-area-inset-top)); right: 14px; display: flex; gap: 8px; }
@@ -194,17 +207,35 @@
   .scrollhint svg { width: 20px; height: 20px; animation: bob 1.6s ease-in-out infinite; }
   @keyframes bob { 50% { transform: translateY(5px); } }
 
-  /* ---------- 往下的每一段 ---------- */
-  /* 底部留位置給浮動的 LINE 官方按鈕 */
-  .panel { position: relative; min-height: 100svh; display: flex; align-items: flex-end; padding: 54svh 20px calc(max(10svh, 80px) + env(safe-area-inset-bottom)); }
-  .story { position: relative; }
-  .sticky { position: sticky; top: 0; height: 100svh; display: flex; align-items: flex-end; padding: 0 20px calc(max(9svh, 76px) + env(safe-area-inset-bottom)); }
+  /* ---------- 往下的每一段：每頁多滑一段才換，字卡固定在畫面上，換頁時燒掉再描出來 ---------- */
+  .pin { position: relative; height: calc((1 + var(--hold, .5)) * 100svh); }
+  .pin > .copy { position: sticky; top: 34svh; }   /* 沒有 JS 時的排法 */
   .copy {
-    width: 100%; max-width: 460px; margin: 0 auto; padding: 22px 22px 24px; border-radius: 24px;
-    background: var(--card); border: 1px solid var(--cardline);
+    width: auto; max-width: 460px; margin: 0 20px; padding: 22px 22px 24px; border-radius: 24px;
+    background-color: var(--card); border: 1px solid var(--cardline);
     -webkit-backdrop-filter: blur(16px) saturate(1.2); backdrop-filter: blur(16px) saturate(1.2);
     box-shadow: 0 14px 40px rgba(20, 30, 45, .1);
   }
+  .js .pin > .copy {
+    position: fixed; z-index: 4; left: 20px; right: 20px; top: auto; margin: 0 auto;
+    bottom: calc(max(9svh, 76px) + env(safe-area-inset-bottom));
+    visibility: hidden; pointer-events: none;
+    transition: background-color .5s, border-color .5s, box-shadow .5s;
+  }
+  .js .pin > .copy.show { visibility: visible; }
+  .js .pin > .copy.on { pointer-events: auto; }
+  .js .pin > .copy.bare { background-color: transparent; border-color: transparent; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+  /* 字一行一行浮出來 */
+  .js .pin > .copy > :not(.cap):not(.edge) { opacity: 0; transform: translateY(10px); transition: opacity .55s, transform .55s cubic-bezier(.2, .7, .2, 1); }
+  .js .pin > .copy.on > :not(.cap):not(.edge) { opacity: 1; transform: none; }
+  .js .pin > .copy.on > :nth-child(2) { transition-delay: .14s; }
+  .js .pin > .copy.on > :nth-child(3) { transition-delay: .28s; }
+  .js .pin > .copy.on > :nth-child(4) { transition-delay: .42s; }
+  .js .pin > .copy.on > :nth-child(5) { transition-delay: .56s; }
+  .js .pin > .copy.on > :nth-child(6) { transition-delay: .7s; }
+  .js .pin > .copy.out > :not(.cap):not(.edge) { opacity: 0; transform: translateY(-8px); transition-duration: .3s; transition-delay: 0s; }
+  .js .pin > .copy:not(.on) .cap.on, .js .pin > .copy.out .cap.on { opacity: 0; }
+
   .kicker { font-size: 12px; letter-spacing: 4px; color: var(--gold); margin-bottom: 8px; }
   .copy h2 { font-family: "Noto Serif TC", serif; font-weight: 700; font-size: 26px; line-height: 1.35; margin-bottom: 10px; }
   .copy p { font-size: 15px; line-height: 1.85; color: var(--fg); }
@@ -212,41 +243,109 @@
 
   /* 會換的字幕 */
   .caps { position: relative; min-height: 176px; }
+  .caps.hasmore { min-height: 212px; }
   .cap { position: absolute; left: 22px; right: 22px; top: 44px; opacity: 0; transform: translateY(10px); transition: opacity .45s, transform .45s; pointer-events: none; }
   .cap.on { opacity: 1; transform: none; }
   .cap b { display: block; font-family: "Noto Serif TC", serif; font-weight: 700; font-size: 24px; color: var(--gold); margin-bottom: 6px; letter-spacing: 1px; }
   .cap span { display: block; font-size: 16px; line-height: 1.8; }
   .cap small { display: block; margin-top: 8px; font-size: 12px; color: var(--fg3); }
+  .caps > .more { position: absolute; left: 22px; bottom: 18px; margin: 0; }
+  .caps > .note { position: absolute; right: 22px; bottom: 20px; font-size: 11px; letter-spacing: 1px; color: var(--fg3); }
+  .more { display: inline-flex; margin-top: 14px; font-size: 13px; color: var(--gold); border-bottom: 1px solid currentColor; }
 
-  .tag { display: inline-block; margin-top: 12px; font-size: 12px; letter-spacing: 2px; padding: 4px 12px; border-radius: 99px; border: 1px solid #d8bc83; color: var(--gold); }
+  /* 書：書稿的紙 */
+  .copy.paper {
+    background-color: #F5F0E6; border-color: rgba(36, 34, 31, .16); color: #24221F;
+    background-image: repeating-linear-gradient(180deg, transparent 0 27px, rgba(36, 34, 31, .045) 27px 28px);
+    box-shadow: 0 18px 50px rgba(0, 0, 0, .38);
+  }
+  .copy.paper .kicker { color: #A3362B; }
+  .copy.paper h2, .copy.paper p { color: #24221F; }
+  .count { font-variant-numeric: tabular-nums; }
+  .seal {
+    display: inline-block; margin-top: 14px; padding: 5px 10px 5px 14px; border: 2px solid #A3362B; border-radius: 4px;
+    font-family: "Noto Serif TC", serif; font-weight: 700; font-size: 14px; letter-spacing: 4px; color: #A3362B;
+    transform: rotate(-5deg); opacity: .92;
+  }
 
-  /* 金句：粒子拼字，下面一行小字 */
-  .quote .copy { text-align: center; background: transparent; border-color: transparent; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
-  .copy .qtext { font-family: "Noto Serif TC", serif; font-weight: 500; font-size: 19px; letter-spacing: 2px; text-shadow: 0 0 14px var(--glow); }
-  .copy .qsign { margin-top: 8px; font-family: "EB Garamond", serif; font-style: italic; font-size: 17px; color: var(--gold); }
+  /* 金句：字是光筆寫的（在粒子那層），卡片只放簽名 */
+  .copy.ghost { text-align: center; background-color: transparent; border-color: transparent; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .js .pin > .copy.ghost { padding-bottom: 6px; }
   .copy .qpre { font-size: 13px; color: var(--fg2); margin-bottom: 6px; }
+  .sig { display: block; margin: 0 auto; width: 126px; height: 40px; overflow: visible; }
+  .sig path { fill: none; stroke: var(--gold); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+  .sig { filter: drop-shadow(0 0 3px rgba(240, 200, 120, .75)); }
 
-  /* 截圖 */
-  .shots { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px; }
-  .shot { position: relative; display: block; border-radius: 16px; overflow: hidden; border: 1px solid var(--cardline); background: #000; }
-  .shot img { display: block; width: 100%; aspect-ratio: 9 / 15; object-fit: cover; object-position: top; }
-  .shot span { position: absolute; left: 8px; right: 8px; bottom: 8px; padding: 7px 10px; border-radius: 12px; font-size: 13px; text-align: center; color: #30343b; background: rgba(255, 255, 255, .9); }
-  .shot.single { max-width: 220px; margin-top: 14px; }
+  /* 手機框裡的操作錄影 */
+  .phones { display: flex; gap: 14px; margin-top: 14px; }
+  .pw { display: flex; flex-direction: column; align-items: center; gap: 8px; font-size: 13px; color: var(--gold); }
+  .phone {
+    position: relative; display: block; width: min(28vw, 14svh, 132px); aspect-ratio: 360 / 780; padding: 4px; border-radius: 20px;
+    background: #0b0d12; border: 1px solid rgba(255, 255, 255, .2);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, .35), inset 0 0 0 1px rgba(255, 255, 255, .05);
+  }
+  .phone video, .phone img { display: block; width: 100%; height: 100%; object-fit: cover; border-radius: 16px; background: #000; }
+  .phone::before { content: ""; position: absolute; z-index: 2; top: 8px; left: 50%; width: 28%; height: 7px; border-radius: 99px; background: #0b0d12; transform: translateX(-50%); }
+  /* 卡片跟著手指傾斜、反光掃過去 */
+  .tilt { transform-style: preserve-3d; will-change: transform; }
+  .tilt::after {
+    content: ""; position: absolute; inset: 0; z-index: 3; border-radius: inherit; pointer-events: none; opacity: var(--gl, 0);
+    background: linear-gradient(115deg, transparent 30%, rgba(255, 255, 255, .38) 48%, transparent 62%);
+    background-size: 260% 100%; background-position: var(--gx, 50%) 0;
+  }
 
-  /* 影片牆 */
+  /* 影片牆：翻牌 */
   .copy.wide { max-width: 980px; }
-  .wall { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 14px; }
-  .film { position: relative; display: block; border-radius: 14px; overflow: hidden; background: #000; border: 1px solid var(--cardline); }
-  .film video { display: block; width: 100%; aspect-ratio: 9 / 16; object-fit: cover; }
-  .film span { position: absolute; left: 0; right: 0; bottom: 0; padding: 26px 10px 9px; font-size: 13px; color: #fff; background: linear-gradient(transparent, rgba(0, 0, 0, .75)); }
-  .more { display: inline-flex; margin-top: 14px; font-size: 14px; color: var(--gold); border-bottom: 1px solid currentColor; }
+  .wall { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 12px; perspective: 900px; }
+  .film { position: relative; display: block; aspect-ratio: 9 / 16; }
+  .film .fc { position: absolute; inset: 0; border-radius: 10px; overflow: hidden; background: #05080d; border: 1px solid var(--cardline); }
+  .film img, .film video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+  .film span { position: absolute; left: 0; right: 0; bottom: 0; padding: 18px 6px 6px; font-size: 10px; line-height: 1.35; color: #fff; background: linear-gradient(transparent, rgba(0, 0, 0, .8)); }
+  .film .blank { position: absolute; inset: 0; background: radial-gradient(circle at 50% 42%, rgba(224, 190, 116, .35), transparent 58%), linear-gradient(160deg, #101a28, #06090f); }
+  .film .blank::after { content: ""; position: absolute; left: 50%; top: 42%; width: 34%; aspect-ratio: 1; transform: translate(-50%, -50%); border-radius: 50%; border: 1.5px solid rgba(224, 190, 116, .7); box-shadow: 0 0 14px rgba(224, 190, 116, .45); }
+  .wall-tabs { display: flex; gap: 14px; margin-top: 2px; font-size: 12px; letter-spacing: 2px; color: var(--fg3); }
+  .wall-tabs b { font-weight: 500; transition: color .3s; }
+  .wall-tabs b.cur { color: var(--gold); }
 
   /* 結尾：排法跟第一頁一樣 */
-  #end { padding-bottom: calc(max(7svh, 40px) + env(safe-area-inset-bottom)); }
-  #end .copy { background: transparent; border-color: transparent; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; padding: 0; }
-  #end .links { margin: 0 auto; }
+  #end .copy { padding: 0; }
+  #end .links { margin: 0 auto; max-width: 440px; }
+  .sig.big { width: 170px; height: 54px; margin-bottom: 14px; }
   .qrnote { display: none; margin-top: 14px; text-align: center; font-size: 13px; color: var(--fg3); }
-  footer { margin-top: 18px; text-align: center; font-size: 12px; letter-spacing: 1px; color: var(--fg3); }
+  footer { margin-top: 16px; text-align: center; font-size: 12px; letter-spacing: 1px; color: var(--fg3); }
+
+  /* 右邊的小笑臉＝進度，點它開章節 */
+  .prog { position: fixed; z-index: 6; right: 6px; top: calc(78px + env(safe-area-inset-top)); width: 30px; height: 24svh; pointer-events: none; opacity: 0; transition: opacity .4s; }
+  .prog.on { opacity: 1; }
+  .prog .rail, .prog .fill { position: absolute; left: 14px; top: 0; width: 2px; border-radius: 2px; }
+  .prog .rail { bottom: 0; background: var(--fg3); opacity: .28; }
+  .prog .fill { height: 0; background: linear-gradient(var(--gold), var(--gold)); opacity: .85; box-shadow: 0 0 6px var(--gold); }
+  .prog .tick { position: absolute; left: 12px; width: 6px; height: 6px; margin-top: -3px; border-radius: 50%; background: var(--fg3); opacity: .5; }
+  .prog .tick.done { background: var(--gold); opacity: .9; }
+  .prog .me {
+    position: absolute; left: 1px; top: 0; width: 28px; height: 28px; margin-top: -14px; border-radius: 50%; pointer-events: auto; cursor: pointer;
+    background: #F5D417 url(avatar.jpg) center / 106% no-repeat; box-shadow: 0 0 0 2px #fff, 0 0 14px rgba(233, 200, 120, .75);
+    transform: translateY(var(--y, 0px)); touch-action: manipulation;
+  }
+  .prog .me::before { content: ""; position: absolute; inset: -10px; }   /* 手指好按一點 */
+  .prog .me.blink { animation: blink .22s ease-in-out; }
+  @keyframes blink { 50% { transform: translateY(var(--y, 0px)) scaleY(.2); } }
+  .flyme { position: fixed; z-index: 7; left: 0; top: 0; border-radius: 50%; pointer-events: none; background: #F5D417 url(avatar.jpg) center / 106% no-repeat; box-shadow: 0 0 0 3px #fff, 0 0 24px rgba(233, 200, 120, .75); transform-origin: 0 0; }
+  .chap { position: fixed; inset: 0; z-index: 10; visibility: hidden; }
+  .chap.on { visibility: visible; }
+  .chap .bg { position: absolute; inset: 0; background: rgba(4, 8, 14, .5); opacity: 0; transition: opacity .3s; }
+  .chap.on .bg { opacity: 1; }
+  .chap .list {
+    position: absolute; right: 12px; top: calc(66px + env(safe-area-inset-top)); width: min(280px, calc(100vw - 24px)); max-height: calc(100svh - 110px); overflow: auto;
+    padding: 10px; border-radius: 22px; background: rgba(13, 22, 35, .9); border: 1px solid rgba(241, 234, 220, .16); color: #efe7d6;
+    -webkit-backdrop-filter: blur(18px) saturate(1.3); backdrop-filter: blur(18px) saturate(1.3);
+    transform-origin: 100% 0; transform: scale(.9) translateY(-6px); opacity: 0; transition: transform .35s cubic-bezier(.2, 1.2, .4, 1), opacity .25s;
+  }
+  .chap.on .list { transform: none; opacity: 1; }
+  .chap h3 { margin: 10px 10px 4px; font-size: 11px; font-weight: 400; letter-spacing: 3px; color: #e0be74; }
+  .chap a { display: block; padding: 9px 12px; border-radius: 12px; font-size: 15px; color: #efe7d6; }
+  .chap a.cur { background: rgba(224, 190, 116, .16); color: #f6dca2; }
+  @media (hover: hover) { .chap a:hover { background: rgba(255, 255, 255, .06); } }
 
   .toast {
     position: fixed; left: 50%; bottom: calc(28px + env(safe-area-inset-bottom)); z-index: 9;
@@ -260,15 +359,14 @@
 
   /* 電腦版：字在左、粒子在右 */
   @media (min-width: 761px) {
-    .panel { align-items: center; padding: 12vh 6vw; }
-    .sticky { align-items: center; padding: 0 6vw; }
-    .panel .copy, .sticky .copy { margin: 0; max-width: 430px; }
-    .panel .copy.wide { max-width: 980px; margin: 0 auto; }
-    #films { align-items: flex-end; }
-    .wall { grid-template-columns: repeat(4, 1fr); }
-    .quote .copy { margin: 0 auto; align-self: flex-end; }
-    #end .copy { margin: 0 auto; }
+    .js .pin > .copy { left: 6vw; right: auto; top: 50%; bottom: auto; width: 430px; margin: 0; transform: translateY(-50%); }
+    .js .pin > .copy.wide { left: 50%; width: min(980px, 88vw); max-width: none; top: auto; bottom: 6vh; transform: translateX(-50%); }
+    .js .pin > .copy.ghost { left: 50%; width: 460px; top: auto; bottom: 8vh; transform: translateX(-50%); }
+    .js #end > .copy { left: 50%; width: 440px; top: auto; bottom: 7vh; transform: translateX(-50%); }
+    .wall { grid-template-columns: repeat(8, 1fr); }
+    .film span { font-size: 11px; }
     .qrnote { display: block; }
+    .prog { right: 14px; }
   }
   @media (prefers-reduced-motion: reduce) {
     .avatar .ring, .scrollhint svg, .mini *, .lbtn.oa.lit::before { animation: none !important; }
@@ -342,9 +440,9 @@
     <a class="scrollhint rise" href="#me">往下滑<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></a>
   </header>
 
-  <!-- 我是誰 -->
+  <!-- 人 -->
   <div class="slow" aria-hidden="true"></div>
-  <section class="panel" id="me" data-shape="smiley">
+  <section class="pin" id="me" data-shape="smiley" data-title="我是誰" data-block="人" style="--hold: .5">
     <div class="copy">
       <p class="kicker">我是誰</p>
       <h2>Snsheng</h2>
@@ -353,107 +451,116 @@
     </div>
   </section>
 
-  <!-- 雙極交易法：天秤三態 -->
-  <section class="story" id="balance" data-shape="balance" style="height: 340vh">
-    <div class="sticky">
-      <div class="copy caps">
-        <p class="kicker">雙極交易法｜天秤三態</p>
-        <div class="cap" data-at="0"><b>極陽</b><span>每根 K 都突破前一根高點，低點從來沒被跌破。</span></div>
-        <div class="cap" data-at="0.36"><b>平衡</b><span>最高那根 K 的低點第一次被跌破，之後在區間裡回撤盤整。</span></div>
-        <div class="cap" data-at="0.7"><b>極陰</b><span>空方完全主導。</span></div>
-      </div>
+  <!-- 交易 -->
+  <section class="pin" id="balance" data-shape="balance" data-title="天秤三態" data-block="交易" style="--hold: 2.2">
+    <div class="copy caps">
+      <p class="kicker">雙極交易法｜天秤三態</p>
+      <div class="cap" data-at="0"><b>極陽</b><span>每根 K 都突破前一根高點，低點從來沒被跌破。</span></div>
+      <div class="cap" data-at="0.36"><b>平衡</b><span>最高那根 K 的低點第一次被跌破，之後在區間裡回撤盤整。</span></div>
+      <div class="cap" data-at="0.7"><b>極陰</b><span>空方完全主導。</span></div>
     </div>
   </section>
 
-  <!-- 道、法、術（這段從陽轉陰） -->
-  <section class="story" id="dao" data-shape="dao" style="height: 300vh">
-    <div class="sticky">
-      <div class="copy caps">
-        <p class="kicker">道、法、術</p>
-        <div class="cap" data-at="0"><b>道＝錢</b><span>錢驅動市場循環：錢、價格行為、K 線、結構。</span></div>
-        <div class="cap" data-at="0.34"><b>法＝滾倉</b><span>「勝兵先勝而後求戰。」</span><small>《孫子兵法》</small></div>
-        <div class="cap" data-at="0.67"><b>術＝看待市場的方法</b><span>判斷順序：結構 ＞ 單根 K 高低 ＞ 價格行為。<br>術是看待市場，法才是操作市場。</span></div>
-      </div>
+  <section class="pin" id="dao" data-shape="dao" data-title="道、法、術" style="--hold: 2">
+    <div class="copy caps hasmore">
+      <p class="kicker">道、法、術</p>
+      <div class="cap" data-at="0"><b>道＝錢</b><span>錢驅動市場循環：錢、價格行為、K 線、結構。</span></div>
+      <div class="cap" data-at="0.34"><b>法＝滾倉</b><span>「勝兵先勝而後求戰。」</span><small>《孫子兵法》</small></div>
+      <div class="cap" data-at="0.67"><b>術＝看待市場的方法</b><span>判斷順序：結構 ＞ 單根 K 高低 ＞ 價格行為。<br>術是看待市場，法才是操作市場。</span></div>
+      <a class="more" href="https://www.youtube.com/watch?v=NdvbwS2zcuM">看我講交易的四大框架 ↗</a>
     </div>
   </section>
 
-  <!-- 雙極交易法：突破進場（黑白分割） -->
+  <section class="pin" id="tf" data-shape="tf" data-title="時間級別" style="--hold: 2.2">
+    <div class="copy caps hasmore">
+      <p class="kicker">雙極交易法｜時間級別</p>
+      <div class="cap" data-at="0"><b>進場看 1／5／15 分</b><span>突破型態、壓力支撐或結構高的時候，用 1／5／15 分的結構或裸K進場。結構為主，因為較強。</span></div>
+      <div class="cap" data-at="0.3"><b>管倉看 4H／1H</b><span>突破後延續的過程中，用 4H／1H 移動止損，看趨勢強弱、結構有沒有一階一階往上。</span></div>
+      <div class="cap" data-at="0.58"><b>大方向看日、週、月</b><span>判斷大級別是否轉弱。日線或週線低點沒跌破前，上漲都不算結束。</span></div>
+      <div class="cap" data-at="0.82"><b>看盤由大到小</b><span>不要用小級別的訊號推翻大級別方向。小級別先轉弱，只是警訊。</span></div>
+      <a class="more" href="https://www.youtube.com/watch?v=ZXeyrZsCJ6E">看我講時間級別的搭配 ↗</a>
+    </div>
+  </section>
+
+  <section class="pin" id="rocket" data-shape="rocket" data-title="火箭模型" style="--hold: 2.4">
+    <div class="copy caps">
+      <p class="kicker">雙極交易法｜火箭模型</p>
+      <div class="cap" data-at="0"><b>燃料</b><span>緩跌密集區、多次測試的線、型態累積的流動性。橫的越長，豎的越高。</span></div>
+      <div class="cap" data-at="0.3"><b>慣性</b><span>缺口、流動性少的空間。大K推進，靠慣性上衝。</span></div>
+      <div class="cap" data-at="0.56"><b>牆</b><span>高級訂單塊、強跌起點、壓力，也是目標。牆越遠，空間越大，盈虧比越好。</span></div>
+      <div class="cap" data-at="0.8"><b>進場之前</b><span>先在圖上標出牆、缺口、燃料，判斷值不值得做。</span></div>
+    </div>
+  </section>
+
   <div class="slow" aria-hidden="true"></div>
-  <section class="story" id="breakout" data-shape="breakout" style="height: 560vh">
-    <div class="sticky">
-      <div class="copy caps">
-        <p class="kicker">雙極交易法｜突破進場</p>
-        <div class="cap" data-at="0"><b>頂分型形成頂</b><span>第 1 根上漲，第 2 根突破第 1 根高點，第 3 根跌破第 2 根低點。</span></div>
-        <div class="cap" data-at="0.22"><b>回撤盤整</b><span>頂形成之後，價格回撤盤整。</span></div>
-        <div class="cap" data-at="0.42"><b>突破</b><span>突破和跌破一樣，影線碰到就算。</span></div>
-        <div class="cap" data-at="0.56"><b>突破進場</b><span>止損通常放在結構的底。</span></div>
-        <div class="cap" data-at="0.68"><b>新結構</b><span>頂被突破，就是新結構。</span></div>
-        <div class="cap" data-at="0.93"><b>假突破</b><span>突破後又跌破結構的底＝假突破。</span></div>
-      </div>
+  <section class="pin" id="breakout" data-shape="breakout" data-title="突破進場" style="--hold: 4.6">
+    <div class="copy caps hasmore">
+      <p class="kicker">雙極交易法｜突破進場</p>
+      <div class="cap" data-at="0"><b>頂分型形成頂</b><span>第 1 根上漲，第 2 根突破第 1 根高點，第 3 根跌破第 2 根低點。</span></div>
+      <div class="cap" data-at="0.22"><b>回撤盤整</b><span>頂形成之後，價格回撤盤整。</span></div>
+      <div class="cap" data-at="0.42"><b>突破</b><span>突破和跌破一樣，影線碰到就算。</span></div>
+      <div class="cap" data-at="0.56"><b>突破進場</b><span>止損通常放在結構的底。</span></div>
+      <div class="cap" data-at="0.68"><b>新結構</b><span>頂被突破，就是新結構。</span></div>
+      <div class="cap" data-at="0.93"><b>假突破</b><span>突破後又跌破結構的底＝假突破。</span></div>
+      <a class="more" href="https://www.youtube.com/watch?v=-fij-onpNlc">看我講怎麼判斷真突破 ↗</a>
+      <span class="note">比特幣週線</span>
     </div>
   </section>
 
-  <!-- 書 -->
-  <section class="panel" id="book" data-shape="book">
-    <div class="copy">
+  <!-- 寫書 -->
+  <section class="pin" id="book" data-shape="book" data-title="正在寫的書" data-block="寫書" style="--hold: .6">
+    <div class="copy paper">
       <p class="kicker">正在寫</p>
       <h2>《雙極交易法》</h2>
-      <p>大約 550 頁，思想和交易法寫在同一本。寫完會放在這裡。</p>
-      <span class="tag">寫作中</span>
+      <p>大約 <b class="count" data-to="550">550</b> 頁，思想和交易法寫在同一本。寫完會放在這裡。</p>
+      <span class="seal">寫作中</span>
     </div>
   </section>
 
-  <!-- 金句 -->
-  <section class="panel quote" data-shape="q0"><div class="copy"><p class="qsign">Snsheng</p></div></section>
-  <section class="panel quote" data-shape="q1"><div class="copy"><p class="qsign">Snsheng</p></div></section>
-  <section class="panel quote" data-shape="q2"><div class="copy"><p class="qsign">Snsheng</p></div></section>
-  <section class="panel quote" data-shape="q3"><div class="copy"><p class="qpre">十年後，希望別人想到我的時候會說</p><p class="qsign">Snsheng</p></div></section>
+  <section class="pin quote" data-shape="q0" data-title="四句話" style="--hold: .7"><div class="copy ghost"><svg class="sig" viewBox="0 -1 114 37" aria-label="Snsheng"></svg></div></section>
+  <section class="pin quote" data-shape="q1" style="--hold: .7"><div class="copy ghost"><svg class="sig" viewBox="0 -1 114 37" aria-label="Snsheng"></svg></div></section>
+  <section class="pin quote" data-shape="q2" style="--hold: .7"><div class="copy ghost"><svg class="sig" viewBox="0 -1 114 37" aria-label="Snsheng"></svg></div></section>
+  <section class="pin quote" data-shape="q3" style="--hold: .7"><div class="copy ghost"><p class="qpre">十年後，希望別人想到我的時候會說</p><svg class="sig" viewBox="0 -1 114 37" aria-label="Snsheng"></svg></div></section>
 
-  <!-- OX -->
-  <section class="panel" id="ox" data-shape="ox">
+  <!-- 做工具 -->
+  <section class="pin" id="ox" data-shape="ox" data-title="OX 篩選器" data-block="做工具" style="--hold: .8">
     <div class="copy">
       <p class="kicker">我做的工具</p>
       <h2>OX 篩選器</h2>
       <p>手畫一個型態，幫你找出長得像的股票。台股和加密貨幣各一個版本。</p>
-      <div class="shots">
-        <a class="shot" href="https://oxpattern.com"><img src="media/shot-ox-tw.jpg" alt="OX 台股畫面" loading="lazy"><span>OX 台股 ↗</span></a>
-        <a class="shot" href="https://ox-crypto-independent.vercel.app"><img src="media/shot-ox-crypto.jpg" alt="OX 加密畫面" loading="lazy"><span>OX 加密 ↗</span></a>
+      <div class="phones">
+        <a class="pw" href="https://oxpattern.com"><span class="phone tilt"><video muted loop playsinline preload="none" poster="media/rec-ox-tw.jpg" data-src="media/rec-ox-tw.mp4"></video></span>OX 台股 ↗</a>
+        <a class="pw" href="https://ox-crypto-independent.vercel.app"><span class="phone tilt"><video muted loop playsinline preload="none" poster="media/rec-ox-crypto.jpg" data-src="media/rec-ox-crypto.mp4"></video></span>OX 加密 ↗</a>
       </div>
     </div>
   </section>
 
-  <!-- 合成市場 -->
-  <section class="panel" id="merge" data-shape="merge">
+  <section class="pin" id="merge" data-shape="merge" data-title="合成市場" style="--hold: .7">
     <div class="copy">
       <p class="kicker">小遊戲</p>
       <h2>合成市場</h2>
       <p>台股、美股、加密、外匯的公司和幣丟進來合成，越合越大。有排位賽和每日挑戰。</p>
-      <a class="shot single" href="https://merge-market.btcfly.chatgpt.site"><img src="media/shot-merge.jpg" alt="合成市場畫面" loading="lazy"><span>開始玩 ↗</span></a>
+      <div class="phones">
+        <a class="pw" href="https://merge-market.btcfly.chatgpt.site"><span class="phone tilt"><video muted loop playsinline preload="none" poster="media/rec-merge.jpg" data-src="media/rec-merge.mp4"></video></span>開始玩 ↗</a>
+      </div>
     </div>
   </section>
 
-  <!-- 影片 -->
-  <section class="panel" id="films" data-shape="films">
+  <!-- 做影片 -->
+  <section class="pin" id="films" data-shape="films" data-title="我做的片" data-block="做影片" style="--hold: 1.5">
     <div class="copy wide">
       <p class="kicker">我做的片</p>
       <h2>一張 K 線圖，看完一段歷史</h2>
-      <div class="wall">
-        <a class="film" href="#" data-key="ig"><video muted loop playsinline preload="none" poster="media/taiex60.jpg" data-src="media/taiex60.mp4"></video><span>台股 60 年</span></a>
-        <a class="film" href="#" data-key="ig"><video muted loop playsinline preload="none" poster="media/btc.jpg" data-src="media/btc.mp4"></video><span>比特幣</span></a>
-        <a class="film" href="#" data-key="ig"><video muted loop playsinline preload="none" poster="media/tw400.jpg" data-src="media/tw400.mp4"></video><span>台灣 400 年</span></a>
-        <a class="film" href="#" data-key="ig"><video muted loop playsinline preload="none" poster="media/rallies.jpg" data-src="media/rallies.mp4"></video><span>台股最強 7 次上漲</span></a>
-        <a class="film" href="#" data-key="ig"><video muted loop playsinline preload="none" poster="media/musk.jpg" data-src="media/musk.mp4"></video><span>如果馬斯克是一檔股票</span></a>
-        <a class="film" href="#" data-key="ig"><video muted loop playsinline preload="none" poster="media/gold.jpg" data-src="media/gold.mp4"></video><span>黃金</span></a>
-        <a class="film" href="#" data-key="ig"><video muted loop playsinline preload="none" poster="media/swan.jpg" data-src="media/swan.mp4"></video><span>台股 5 大黑天鵝</span></a>
-        <a class="film" href="#" data-key="ig"><video muted loop playsinline preload="none" poster="media/apple.jpg" data-src="media/apple.mp4"></video><span>蘋果的人生 K 線圖</span></a>
-      </div>
+      <div class="wall-tabs"><b class="cur">K 線故事片</b><b>短片</b></div>
+      <div class="wall"></div>
       <a class="more" href="#" data-key="ig">到 Instagram 看完整版 ↗</a>
     </div>
   </section>
 
-  <!-- 結尾 -->
-  <section class="panel" id="end" data-shape="logo">
-    <div class="copy">
+  <!-- 一起聊 -->
+  <section class="pin" id="end" data-shape="logo" data-title="加入 LINE" data-block="一起聊" style="--hold: .4">
+    <div class="copy ghost">
+      <svg class="sig big" viewBox="0 -1 114 37" aria-label="Snsheng"></svg>
       <div class="links">
         <a class="lbtn oa" href="#" data-key="lineoa">
           <span class="face"><svg class="ic" viewBox="0 0 24 24"><use href="#i-line-w"/></svg><b>加入 LINE 官方領取福利</b></span>
@@ -474,6 +581,9 @@
     </div>
   </section>
 </main>
+
+<div class="prog" aria-hidden="true"><span class="rail"></span><span class="fill"></span><button class="me" type="button" aria-label="章節"></button></div>
+<div class="chap" role="dialog" aria-label="章節"><div class="bg"></div><nav class="list"></nav></div>
 
 <a class="lpill" href="#" data-key="lineoa"><svg class="ic" viewBox="0 0 24 24"><use href="#i-line-w"/></svg>加入 LINE 官方領取福利</a>
 <div class="toast" role="status" aria-live="polite"></div>
@@ -518,12 +628,6 @@
     if (navigator.share) { try { await navigator.share(data); } catch (e) {} return; }
     try { await navigator.clipboard.writeText(location.href); say("網址已複製"); } catch (e) { say(location.href); }
   });
-  // 影片：滑到才載、才播
-  const io = new IntersectionObserver(es => es.forEach(e => {
-    const v = e.target;
-    if (e.isIntersecting) { if (!v.getAttribute("src")) v.src = v.dataset.src; v.play().catch(() => {}); } else v.pause();
-  }), { rootMargin: "120px" });
-  document.querySelectorAll(".film video").forEach(v => io.observe(v));
 </script>
 <script src="ui.js"></script>
 <script type="module" src="site.js"></script>

@@ -25,6 +25,16 @@ const GOLD = hex(0xc99e45), GOLD_DK = hex(0x9c7a32), GOLD_LT = hex(0xe3c47e), CR
 const BLUE = hex(0x7fa6d6), BLUE_LT = hex(0xa9c4e8);
 const UP = hex(0x52b4d1), DOWN = hex(0xeb4779);
 const INK = hex(0x1b1f27), PAPER = [0.97, 0.95, 0.9];
+const OXBLUE = hex(0x23a6ea), OXBLUE_LT = hex(0x8fd3ff), LINEG = hex(0x06c755), LINEG_LT = hex(0x5cf09a);
+const SEAL = hex(0xa3362b), BOOKPAPER = hex(0xf5f0e6), FLAME = hex(0xff9a3c);
+const easeOutBack = x => { const c = 1.9; x = clamp(x, 0, 1) - 1; return 1 + (c + 1) * x * x * x + c * x * x; };
+const easeOutBounce = x => {
+  x = clamp(x, 0, 1);
+  if (x < 1 / 2.75) return 7.5625 * x * x;
+  if (x < 2 / 2.75) { x -= 1.5 / 2.75; return 7.5625 * x * x + 0.75; }
+  if (x < 2.5 / 2.75) { x -= 2.25 / 2.75; return 7.5625 * x * x + 0.9375; }
+  x -= 2.625 / 2.75; return 7.5625 * x * x + 0.984375;
+};
 const goldish = () => rand() < 0.5 ? mix3(GOLD_DK, GOLD, rand()) : mix3(GOLD, GOLD_LT, rand());
 
 // ---------- 字和卡片的顏色（陰陽在中間一起翻） ----------
@@ -59,6 +69,7 @@ addEventListener("keydown", unlockAudio);
 soundBtn.addEventListener("click", () => {
   soundOn = !soundOn; localStorage.setItem("snsheng-sound", soundOn ? "on" : "off"); syncSoundBtn();
   unlockAudio();
+  if (amb && actx) amb.out.gain.setTargetAtTime(soundOn ? 0.03 : 0, actx.currentTime, 0.05);
   if (soundOn) setTimeout(() => braam(0.25, 0.55), 60);
 });
 let irBuf = null;
@@ -139,6 +150,33 @@ function tick(strong) {   // 按鈕的觸感音：短短喀一聲，官方按鈕
   }
 }
 addEventListener("sn:tick", e => setTimeout(() => tick(e.detail && e.detail.strong), 15));
+function whoosh(level = 0.6) {   // 轉場：一陣風聲掃過去
+  if (!soundOn || !actx || actx.state !== "running") return;
+  const t = actx.currentTime + 0.01, dur = 0.7, out = actx.createGain(); out.gain.value = 0.22 * level; out.connect(actx.destination);
+  const n = actx.createBufferSource(); n.buffer = noiseBuf(dur);
+  const bp = actx.createBiquadFilter(); bp.type = "bandpass"; bp.Q.value = 0.9;
+  bp.frequency.setValueAtTime(320, t); bp.frequency.exponentialRampToValueAtTime(2200, t + dur * 0.55); bp.frequency.exponentialRampToValueAtTime(700, t + dur);
+  const g = actx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(1, t + dur * 0.45); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  n.connect(bp); bp.connect(g); g.connect(out); n.start(t); n.stop(t + dur);
+}
+// 低音鋪底：很小聲、一直在，滑到突破那段變大
+let amb = null;
+function ambient(level) {
+  if (!actx || actx.state !== "running") return;
+  if (!amb) {
+    const out = actx.createGain(); out.gain.value = 0; out.connect(actx.destination);
+    const lp = actx.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 260; lp.Q.value = 0.7; lp.connect(out);
+    [[55, 0, 0.5], [55, 7, 0.4], [82.4, -5, 0.28], [110, 3, 0.16]].forEach(([f, d, v]) => {
+      const o = actx.createOscillator(); o.type = "sawtooth"; o.frequency.value = f; o.detune.value = d;
+      const g = actx.createGain(); g.gain.value = v; o.connect(g); g.connect(lp); o.start();
+    });
+    const lfo = actx.createOscillator(); lfo.frequency.value = 0.07;
+    const lg = actx.createGain(); lg.gain.value = 90; lfo.connect(lg); lg.connect(lp.frequency); lfo.start();
+    amb = { out };
+  }
+  amb.out.gain.setTargetAtTime(soundOn && !document.hidden ? level : 0, actx.currentTime, 0.6);
+}
+document.addEventListener("visibilitychange", () => { if (amb && actx) amb.out.gain.setTargetAtTime(document.hidden || !soundOn ? 0 : 0.03, actx.currentTime, 0.05); });
 function flash(strength = 1) {
   if (!flashEl || reduce) return;
   flashEl.style.transition = "none"; flashEl.style.opacity = String(0.9 * strength);
@@ -146,7 +184,7 @@ function flash(strength = 1) {
 }
 
 // ---------- 每一段的位置和字幕 ----------
-const secs = [...document.querySelectorAll("[data-shape]")].map(el => ({ el, key: el.dataset.shape, sticky: el.classList.contains("story"), caps: [...el.querySelectorAll(".cap")], capOn: -1 }));
+const secs = [...document.querySelectorAll("[data-shape]")].map(el => ({ el, key: el.dataset.shape, sticky: el.classList.contains("pin"), caps: [...el.querySelectorAll(".cap")], capOn: -1 }));
 const idx = k => secs.findIndex(s => s.key === k);
 let VH = innerHeight;
 const RNG = { t1: [0, 1], t2: [0, 1], sp: [0, 1, 2, 3] };   // 陰→陽、陽→陰（太極）、黑白分割
@@ -159,9 +197,9 @@ function measure() {
     else { const mid = s.top + s.h / 2 - VH / 2; s.h0 = mid - VH * 0.12; s.h1 = mid + VH * 0.12; }
   }
   secs[0].h0 = -1e9; secs[0].h1 = VH * 0.08;
-  const me = secs[idx("smiley")], dao = secs[idx("dao")], bk = secs[idx("breakout")];
+  const me = secs[idx("smiley")], rk = secs[idx("rocket")], bk = secs[idx("breakout")];
   RNG.t1 = [secs[0].h1, me.h0];
-  RNG.t2 = [dao.h1, bk.h0];
+  RNG.t2 = [rk.h1, bk.h0];
   RNG.sp = [bk.h0, bk.h0 + VH * 0.3, bk.h1, bk.h1 + VH * 0.35];
 }
 function localP(s, y) { return s.sticky ? clamp((y - s.top) / Math.max(1, s.h - VH), 0, 1) : 0.5; }
@@ -312,10 +350,11 @@ function start() {
     CHART = phone ? { cx: 0, cy: Hw * 0.19, hw: Ww * 0.48, hh: Hw * 0.25 } : { cx: Ww * 0.14, cy: Hw * 0.02, hw: Ww * 0.33, hh: Hw * 0.38 };
     const avEl = document.querySelector(".avatar"), avY = avEl ? avEl.offsetTop + avEl.offsetHeight / 2 : H * 0.135;   // 星系的核心放在頭像正後面
     HERO = phone ? { cx: 0, cy: (H / 2 - avY) * Hw / H, r: Ww * 1.2 } : { cx: 0, cy: (H / 2 - avY) * Hw / H, r: Hw * 0.9 };
-    QUOTE = phone ? { cx: 0, cy: Hw * 0.1, hw: Ww * 0.46, hh: Hw * 0.3 } : { cx: 0, cy: Hw * 0.06, hw: Ww * 0.38, hh: Hw * 0.3 };
-    TOPC = phone ? STAGE : { cx: 0, cy: Hw * 0.3, hw: Ww * 0.17, hh: Hw * 0.15 };
+    QUOTE = phone ? { cx: -Ww * 0.02, cy: Hw * 0.1, hw: Ww * 0.41, hh: Hw * 0.3 } : { cx: 0, cy: Hw * 0.06, hw: Ww * 0.38, hh: Hw * 0.3 };
+    TOPC = phone ? { cx: -Ww * 0.03, cy: Hw * 0.285, hw: Ww * 0.4, hh: Hw * 0.15 } : { cx: 0, cy: Hw * 0.3, hw: Ww * 0.17, hh: Hw * 0.15 };
   }
   layout();
+  const mainStage = () => STAGE;
 
   // ---------- 形狀 ----------
   const newShape = () => ({ pos: new Float32Array(N * 3), col: new Float32Array(N * 3), colD: new Float32Array(N * 3), size: new Float32Array(N), alpha: new Float32Array(N), dyn: null, perm: null });
@@ -324,6 +363,10 @@ function start() {
     const key = new Float32Array(N), ord = new Int32Array(N);
     for (let i = 0; i < N; i++) { key[i] = s.pos[i * 3] + s.pos[i * 3 + 1] * 0.08; ord[i] = i; }
     s.perm = ord.sort((a, b) => key[a] - key[b]);
+    let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;   // 主角的範圍（不算淡淡的星塵）
+    for (let i = 0; i < N; i++) if (s.alpha[i] >= 0.45) { const x = s.pos[i * 3], y = s.pos[i * 3 + 1]; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+    if (x0 > x1) { x0 = -1; x1 = 1; y0 = -1; y1 = 1; }
+    s.box = { x0, x1, y0, y1, cx: (x0 + x1) / 2, cy: (y0 + y1) / 2 };
     return s;
   }
   function sampleCanvas(cw, ch, draw, step = 2) {
@@ -467,16 +510,25 @@ function start() {
       tag: (i, px, py) => { const d = Math.hypot(px - 200, py - 200); TAG[i] = d > 170 ? 0 : py < 195 ? (px < 200 ? 1 : 2) : 3; } });
     placeSample(s, fill, a, b, rect, { size: 0.15, alpha: 0.3, z: sph, color: () => mix3(CREAM, GOLD_LT, rand()), tag: i => { TAG[i] = 4; } });
     fillDust(s, b, STAGE);
+    for (let i = b; i < N; i++) TAG[i] = -1;
+    s.grp = TAG;
     for (let i = 0; i < N; i++) { BASE[i * 2] = s.pos[i * 3]; BASE[i * 2 + 1] = s.pos[i * 3 + 1]; }
     const eyeY = rect.cy - (151 - 200) * (R / 200);
     const mouthY = rect.cy - (270 - 200) * (R / 200);
-    s.dyn = t => {
-      const blink = bump(t % 3.4, 0, 0.22);                         // 眨眼
-      const laugh = 1 + 0.07 * Math.sin(t * 7) * (0.5 + 0.5 * Math.sin(t * 0.9));   // 笑得一抖一抖
+    const eye = [0, 0];
+    s.center = [rect.cx, rect.cy, R];
+    s.dyn = (t, p, ta = 99) => {
+      const blink = Math.max(bump(t % 3.4, 0, 0.22), bump(ta, 0.15, 0.4));   // 眨眼；到的時候先眨一下
+      const kick = Math.max(0, 1 - (clock - smileKick) / 1.5), arr = ta < 2.2 ? bump(ta, 0.2, 2.2) : 0;
+      const amp = 0.06 + 0.24 * Math.max(kick, arr);
+      const laugh = 1 + amp * Math.sin(t * 9) * (0.55 + 0.45 * Math.sin(t * 0.9 + 1));   // 笑得一抖一抖；點它笑更大
+      let lx = 0, ly = 0;                                                     // 眼睛看手指
+      if (look.on) { const dx = look.x - rect.cx, dy = look.y - rect.cy, d = Math.hypot(dx, dy) || 1, k = Math.min(1, d / (R * 1.6)) * R * 0.1; lx = dx / d * k; ly = dy / d * k; }
+      eye[0] += (lx - eye[0]) * 0.12; eye[1] += (ly - eye[1]) * 0.12;
       for (let i = 0; i < b; i++) {
         const tg = TAG[i];
-        if (tg === 1 || tg === 2) s.pos[i * 3 + 1] = eyeY + (BASE[i * 2 + 1] - eyeY) * (1 - 0.85 * blink);
-        else if (tg === 3) s.pos[i * 3 + 1] = mouthY + (BASE[i * 2 + 1] - mouthY) * laugh;
+        if (tg === 1 || tg === 2) { s.pos[i * 3] = BASE[i * 2] + eye[0]; s.pos[i * 3 + 1] = eyeY + eye[1] + (BASE[i * 2 + 1] - eyeY) * (1 - 0.85 * blink); }
+        else if (tg === 3) { s.pos[i * 3] = BASE[i * 2] + eye[0] * 0.35; s.pos[i * 3 + 1] = mouthY + eye[1] * 0.35 + (BASE[i * 2 + 1] - mouthY) * laugh; }
       }
     };
     s.spin = spinOf(rect.cx, rect.cy, 0.45, 0.55, -0.08);
@@ -522,16 +574,31 @@ function start() {
     for (let k = 0; k < 12; k++) { const o = 19 - 1.4 * k, c = o - 1.7; yin.push({ o, c, hi: o + 0.35, lo: c - 0.4 }); }
     return { yang, bal, yin, brokenLow: yang[6].lo };
   })();
+  // 上面一座天秤（多方在左、空方在右，重的那邊往下沉），下面 12 根 K 棒演三種狀態
   function buildBalance() {
-    const s = newShape();
-    const x0 = STAGE.cx - STAGE.hw * 0.94, x1 = STAGE.cx + STAGE.hw * 0.94, yb = STAGE.cy - STAGE.hh * 0.9, yt = STAGE.cy + STAGE.hh * 0.9;
+    const s = newShape(), G = new Int8Array(N).fill(-1);
+    const x0 = STAGE.cx - STAGE.hw * 0.9, x1 = STAGE.cx + STAGE.hw * 0.86, yb = STAGE.cy - STAGE.hh * 0.95, yt = STAGE.cy + STAGE.hh * 0.1;
     const dx = (x1 - x0) / 12, bw = dx * 0.62, Y = v => yb + v / 20 * (yt - yb);
-    const nc = Math.floor(N * 0.8), nl = Math.floor(N * 0.05);
+    const piv = [STAGE.cx - STAGE.hw * 0.03, STAGE.cy + STAGE.hh * 0.62], Lb = STAGE.hw * 0.56, hang = STAGE.hh * 0.2, rp = STAGE.hw * 0.16, foot = STAGE.cy + STAGE.hh * 0.2;
+    const nc = Math.floor(N * 0.62), nl = Math.floor(N * 0.04), nb = Math.floor(N * 0.06), np = Math.floor(N * 0.05), nq = Math.floor(N * 0.04);
+    const i1 = nc + nl, i2 = i1 + nb, i3 = i2 + np, i4 = i3 + np, i5 = i4 + nq;
     const { K, U } = candleParams(nc, new Array(12).fill(1));
-    fillDust(s, nc + nl, STAGE, 1.3);
-    for (let i = nc; i < nc + nl; i++) { setC(s, i, GOLD); s.size[i] = 0.13; }
-    const cur = new Array(12);
-    s.dyn = (t, p) => {
+    for (let i = 0; i < nc; i++) G[i] = 0;
+    for (let i = i1; i < i2; i++) { G[i] = 3; setC(s, i, goldish()); s.size[i] = 0.17; s.alpha[i] = 0.95; }
+    for (let i = i2; i < i3; i++) { G[i] = 1; setC(s, i, mix3(UP, GOLD, 0.25)); s.size[i] = 0.17; s.alpha[i] = 0.95; }
+    for (let i = i3; i < i4; i++) { G[i] = 2; setC(s, i, mix3(DOWN, GOLD, 0.25)); s.size[i] = 0.17; s.alpha[i] = 0.95; }
+    for (let i = i4; i < i5; i++) { G[i] = 4; setC(s, i, goldish()); s.size[i] = 0.16; s.alpha[i] = 0.9; }
+    fillDust(s, i5, STAGE, 1.3);
+    for (let i = nc; i < i1; i++) { setC(s, i, GOLD); s.size[i] = 0.13; }
+    s.grp = G;
+    const cur = new Array(12), R = Array.from({ length: N }, () => rand());
+    const pan = (i, ex, ey, side) => {   // 秤盤：兩條吊繩＋一個淺碗
+      const u = R[i];
+      if (u < 0.36) { const f = u / 0.36, sx = f < 0.5 ? -1 : 1, g = (f % 0.5) * 2; s.pos[i * 3] = ex + sx * rp * 0.92 * g; s.pos[i * 3 + 1] = ey - hang * g; }
+      else { const a = Math.PI + 0.32 + (u - 0.36) / 0.64 * (Math.PI - 0.64); s.pos[i * 3] = ex + Math.cos(a) * rp; s.pos[i * 3 + 1] = ey - hang + Math.sin(a) * rp * 0.42 + rp * 0.1; }
+      s.pos[i * 3 + 2] = side * 0.1 + (R[(i + 7) % N] - 0.5) * 0.4;
+    };
+    s.dyn = (t, p, ta = 99) => {
       const a = sstep(0.27, 0.4, p), b = sstep(0.62, 0.75, p);
       for (let k = 0; k < 12; k++) {
         const A = BAL.yang[k], B = BAL.bal[k], C = BAL.yin[k];
@@ -545,55 +612,269 @@ function start() {
         s.size[i] = U[i * 3] ? 0.13 : 0.18; s.alpha[i] = 0.95;
       }
       const la = a * (1 - b);
-      for (let i = nc; i < nc + nl; i++) {
+      for (let i = nc; i < i1; i++) {
         const u = (i - nc) / nl;
         s.pos[i * 3] = lerp(x0 + dx * 5.5, x1, u); s.pos[i * 3 + 1] = Y(BAL.brokenLow); s.pos[i * 3 + 2] = 0;
         s.alpha[i] = la * (Math.floor(u * 26) % 2 === 0 ? 0.95 : 0);
       }
+      // 天秤：極陽多方那邊沉、平衡擺平、極陰空方那邊沉；到的時候先晃一下
+      const swing = ta < 3 ? Math.sin(ta * 5.2) * 0.32 * Math.exp(-ta * 1.3) : 0;
+      const phi = lerp(lerp(0.24, 0, a), -0.24, b) + swing + Math.sin(t * 1.3) * 0.02;
+      const cs = Math.cos(phi), sn = Math.sin(phi);
+      const eL = [piv[0] - Lb * cs, piv[1] - Lb * sn], eR = [piv[0] + Lb * cs, piv[1] + Lb * sn];
+      s._eL = eL; s._eR = eR;
+      for (let i = i1; i < i2; i++) { const u = R[i] * 2 - 1; s.pos[i * 3] = piv[0] + u * Lb * cs; s.pos[i * 3 + 1] = piv[1] + u * Lb * sn + (R[(i + 3) % N] - 0.5) * 0.12; s.pos[i * 3 + 2] = (R[(i + 5) % N] - 0.5) * 0.3; }
+      for (let i = i2; i < i3; i++) pan(i, eL[0], eL[1], -1);
+      for (let i = i3; i < i4; i++) pan(i, eR[0], eR[1], 1);
+      for (let i = i4; i < i5; i++) {   // 柱子和底座
+        const u = R[i];
+        if (u < 0.7) { s.pos[i * 3] = piv[0] + (R[(i + 3) % N] - 0.5) * 0.12; s.pos[i * 3 + 1] = lerp(foot, piv[1], u / 0.7); }
+        else { s.pos[i * 3] = piv[0] + ((u - 0.7) / 0.3 - 0.5) * rp * 1.4; s.pos[i * 3 + 1] = foot; }
+        s.pos[i * 3 + 2] = (R[(i + 5) % N] - 0.5) * 0.3;
+      }
     };
     s.dyn(0, 0);
-    s.spin = spinOf(STAGE.cx, STAGE.cy, 0.28, 0.4, -0.06);
+    s.spin = spinOf(STAGE.cx, STAGE.cy, 0.24, 0.4, -0.06);
+    s.labels = [   // 秤盤下面寫多、空，跟著秤盤走
+      { t: "多方", f: o => { o[0] = s._eL[0]; o[1] = s._eL[1] - hang - rp * 0.62; o[2] = 0; return 1; } },
+      { t: "空方", f: o => { o[0] = s._eR[0]; o[1] = s._eR[1] - hang - rp * 0.62; o[2] = 0; return 1; } }
+    ];
     return finish(s);
   }
 
-  // ---- 突破進場：像真的行情（電腦約 120 根、手機約 64 根） ----
-  const BK = (() => {
-    let sd = 99;
+  // 一圈長方形的邊（粒子排成框）
+  function rectEdge(u, x0, y0, x1, y1, out) {
+    const w = x1 - x0, h = y1 - y0, d = u * 2 * (w + h);
+    if (d < w) { out[0] = x0 + d; out[1] = y0; }
+    else if (d < w + h) { out[0] = x1; out[1] = y0 + d - w; }
+    else if (d < 2 * w + h) { out[0] = x1 - (d - w - h); out[1] = y1; }
+    else { out[0] = x0; out[1] = y1 - (d - 2 * w - h); }
+  }
+  // 把一段 K 棒放進某個範圍（K、U 來自 candleParams）
+  function drawCandles(s, i0, i1, K, U, ks, x0, x1, Y, bwK = 0.62, vis = null) {
+    const dx = (x1 - x0) / ks.length, bw = dx * bwK;
+    for (let i = i0; i < i1; i++) {
+      const j = i - i0, k = K[j], c = ks[k], xc = x0 + (k + 0.5) * dx, up = c.c >= c.o;
+      onCandle(s.pos, i * 3, xc, bw, Y(c.o), Y(c.c), Y(c.lo), Y(c.hi), U[j * 3], U[j * 3 + 1], U[j * 3 + 2], false);
+      s.pos[i * 3 + 2] = (U[j * 3 + 1] - 0.5) * bw * 0.8;
+      setC(s, i, mix3(up ? UP : DOWN, [0, 0, 0], U[j * 3] ? 0.1 : 0), mix3(up ? UP : DOWN, [1, 1, 1], U[j * 3] ? 0.3 : 0.12));
+      s.size[i] = U[j * 3] ? 0.12 : 0.16;
+      s.alpha[i] = vis ? 0.95 * vis(k) : 0.95;
+    }
+    return dx;
+  }
+
+  // ---- 時間級別：三層 K 線疊起來，同一段走勢（上面日週月、中間 4H／1H、下面 1／5／15 分） ----
+  const TF = (() => {
+    let sd = 41;
     const r = () => (sd = (sd * 1664525 + 1013904223) >>> 0) / 4294967296;
     const g = () => { const u = Math.max(1e-6, r()), v = r(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(6.2832 * v); };
-    const L = phoneNow ? 64 : 120, RUN = 9, pre = L - RUN - 1, U = Math.round(pre * 0.52) - 3;
-    const out = []; let c = 100;
-    const push = (o, cc, extra = {}) => out.push({ o, c: cc, ...extra });
-    for (let k = 0; k < U; k++) { const o = c; c = o + 0.32 + g() * 1.05; push(o, c); }                       // 上漲
-    { const o = c; c = o + 1.5; push(o, c); }                                                                  // 頂分型 1：漲
-    { const o = c; c = o + 1.2; push(o, c, { top: true }); }                                                   // 頂分型 2：突破前高
-    { const o = c; c = o - 2.8; push(o, c); }                                                                  // 頂分型 3：跌破前低
-    const r0 = out.length;
-    out.forEach(k => { k.hi = Math.max(k.o, k.c) + Math.abs(g()) * 0.45 + 0.1; k.lo = Math.min(k.o, k.c) - Math.abs(g()) * 0.45 - 0.1; });
-    const topI = out.findIndex(k => k.top), top = out[topI];
-    top.hi = Math.max(top.hi, out[topI - 1].hi + 0.5);
-    out[topI + 1].lo = Math.min(out[topI + 1].lo, top.lo - 0.4);
-    const TOP = top.hi, floor = TOP - 7.5;
-    for (let k = r0; k < pre; k++) {                                                                           // 回撤盤整
-      const o = c; let cc = o + (TOP - 3.6 - o) * 0.18 + g() * 0.95;
-      cc = clamp(cc, floor + 1, TOP - 0.9);
-      const hi = Math.min(Math.max(o, cc) + Math.abs(g()) * 0.4 + 0.1, TOP - 0.35), lo = Math.max(Math.min(o, cc) - Math.abs(g()) * 0.4 - 0.1, floor);
-      push(o, cc, { hi, lo }); c = cc;
+    const small = []; let c = 100;
+    for (let k = 0; k < 48; k++) {
+      const drift = k < 14 ? 0.62 : k < 22 ? -0.42 : k < 36 ? 0.8 : k < 41 ? -0.34 : 0.62;
+      const o = c; c = o + drift + g() * 0.85;
+      small.push({ o, c, hi: Math.max(o, c) + Math.abs(g()) * 0.42 + 0.1, lo: Math.min(o, c) - Math.abs(g()) * 0.42 - 0.1 });
     }
-    const r1 = out.length;
-    { const o = c; push(o, TOP - 0.3, { br: true, hi: TOP + 0.08, lo: Math.min(o, TOP - 0.3) - 0.3 }); c = TOP - 0.3; }   // 影線碰到頂＝突破
-    const inc = [3.2, 4.4, 5.8, 7.6, 9.6, 12, 15, 18.5, 22.5];
-    inc.forEach(d => { const o = c; c = o + d; push(o, c, { run: true, hi: c + 0.6 + d * 0.06, lo: o - 0.3 }); });   // 往上噴
-    out.forEach(k => { k.up = k.c >= k.o; });
-    const stop = Math.min(...out.slice(r0, r1).map(k => k.lo));
-    const pmin = Math.min(...out.map(k => k.lo)) - 0.6;
-    return { k: out, L, TOP, stop, pmin, pmax0: TOP + 3, pmaxAll: Math.max(...out.map(k => k.hi)) + 1.5, br: r1, run0: r1 + 1, topI, r0, r1 };
+    const agg = n => { const out = []; for (let k = 0; k < small.length; k += n) { const sg = small.slice(k, k + n); out.push({ o: sg[0].o, c: sg[sg.length - 1].c, hi: Math.max(...sg.map(x => x.hi)), lo: Math.min(...sg.map(x => x.lo)) }); } return out; };
+    const L = [agg(8), agg(3), small];
+    // 中級別的移動止損：創新高時，止損拉到前一根的低點，一階一階往上
+    const mid = L[1], stair = []; let hiMax = -1e9, stop = null;
+    mid.forEach((k, i) => { if (i > 0 && k.hi > hiMax && i > 4) stop = Math.max(stop ?? -1e9, mid[i - 1].lo); hiMax = Math.max(hiMax, k.hi); stair.push(stop); });
+    return { L, stair };
   })();
-  const RUN_T0 = 2.2, RUN_DT = 0.5, RUN_GROW = 0.24;
+  function buildTf() {
+    const s = newShape(), G = new Int8Array(N).fill(-1);
+    const x0 = STAGE.cx - STAGE.hw * 0.84, x1 = STAGE.cx + STAGE.hw * 0.84, bh = STAGE.hh * 0.42;
+    const yc = [STAGE.cy + STAGE.hh * 0.58, STAGE.cy - STAGE.hh * 0.02, STAGE.cy - STAGE.hh * 0.62];
+    const share = [0.15, 0.18, 0.23], nf = Math.floor(N * 0.03);
+    const layers = [];
+    let i = 0;
+    for (let j = 0; j < 3; j++) {
+      const ks = TF.L[j], n = Math.floor(N * share[j]), lo = Math.min(...ks.map(k => k.lo)), hi = Math.max(...ks.map(k => k.hi));
+      const { K, U } = candleParams(n, ks.map(k => Math.abs(k.c - k.o) + 0.6));
+      layers.push({ i0: i, i1: i + n, K, U, ks, Y: v => yc[j] - bh / 2 + (v - lo) / (hi - lo) * bh, f0: i + n, f1: i + n + nf });
+      for (let q = i; q < i + n; q++) G[q] = j;
+      for (let q = i + n; q < i + n + nf; q++) { G[q] = j; setC(s, q, GOLD_DK, GOLD_LT); s.size[q] = 0.1; }
+      i += n + nf;
+    }
+    const ns0 = i, ns = Math.floor(N * 0.03), nk0 = ns0 + ns, nk = Math.floor(N * 0.04);
+    for (let q = ns0; q < ns0 + ns; q++) { G[q] = 1; setC(s, q, DOWN, bright(DOWN)); s.size[q] = 0.13; }
+    for (let q = nk0; q < nk0 + nk; q++) { G[q] = 3; setC(s, q, GOLD_DK, GOLD_LT); s.size[q] = 0.11; }
+    fillDust(s, nk0 + nk, STAGE, 1.3);
+    s.grp = G;
+    const R = Array.from({ length: N }, () => rand()), o3 = [0, 0, 0];
+    const dxMid = (x1 - x0) / TF.L[1].length;
+    // 大級別最後一根，往下對到中級別、小級別的哪一段
+    const coneX = j => j === 0 ? [x0 + 5 / 6 * (x1 - x0), x1] : j === 1 ? [x0 + 40 / 48 * (x1 - x0), x1] : [x0 + 40 / 48 * (x1 - x0), x1];
+    s.dyn = (t, p, ta = -1) => {
+      const e = [sstep(0.52, 0.6, p) * (1 - sstep(0.8, 0.86, p)), sstep(0.24, 0.32, p) * (1 - sstep(0.52, 0.6, p)), 1 - sstep(0.24, 0.32, p)];
+      const all = sstep(0.8, 0.88, p);
+      const sweep = all > 0 ? (t * 0.5) % 1.4 : -1;   // 最後由大看到小：一道光由上往下掃
+      const spread = ta >= 0 && ta < 2.4 ? bump(ta, 0, 2.4) * STAGE.hh * 0.18 : 0;   // 到的時候三層先拉開再收回
+      for (let j = 0; j < 3; j++) {
+        const Lr = layers[j], off = (1 - j) * spread, Yj = v => Lr.Y(v) + off;
+        const em = Math.max(e[j], all), sw = sweep >= 0 ? bump(sweep, j * 0.35, j * 0.35 + 0.6) : 0;
+        drawCandles(s, Lr.i0, Lr.i1, Lr.K, Lr.U, Lr.ks, x0, x1, Yj, j === 0 ? 0.46 : j === 1 ? 0.56 : 0.66);
+        for (let q = Lr.i0; q < Lr.i1; q++) { s.alpha[q] = 0.95 * (0.28 + 0.72 * em); s.size[q] *= 0.85 + 0.3 * em + 0.4 * sw; }
+        for (let q = Lr.f0; q < Lr.f1; q++) {
+          rectEdge(R[q], x0 - 0.5, yc[j] - bh / 2 - 0.5 + off, x1 + 0.5, yc[j] + bh / 2 + 0.5 + off, o3);
+          s.pos[q * 3] = o3[0]; s.pos[q * 3 + 1] = o3[1]; s.pos[q * 3 + 2] = 0;
+          s.alpha[q] = Math.min(1, 0.3 + 0.55 * em + 0.5 * sw);
+        }
+      }
+      // 中級別的移動止損（樓梯）
+      const Lm = layers[1], st = TF.stair;
+      for (let q = ns0; q < ns0 + ns; q++) {
+        const u = R[q] * st.length, k = Math.floor(u), v = st[k];
+        s.pos[q * 3] = x0 + u * dxMid; s.pos[q * 3 + 1] = (v == null ? Lm.Y(Lm.ks[0].lo) : Lm.Y(v)) - spread * 0; s.pos[q * 3 + 2] = 0.2;
+        s.alpha[q] = v == null ? 0 : 0.95 * Math.max(e[1], all * 0.6);
+      }
+      // 大級別一根 K，往下對到小級別一整段
+      for (let q = nk0; q < nk0 + nk; q++) {
+        const u = R[q], seg = u < 0.5 ? 0 : 1, f = (u % 0.5) * 2, side = R[(q + 11) % N] < 0.5 ? 0 : 1;
+        const a = coneX(seg), b = coneX(seg + 1), ya = yc[seg] - bh / 2 - 0.5 + (1 - seg) * spread, yb2 = yc[seg + 1] + bh / 2 + 0.5 + (1 - seg - 1) * spread;
+        s.pos[q * 3] = lerp(a[side], b[side], f); s.pos[q * 3 + 1] = lerp(ya, yb2, f); s.pos[q * 3 + 2] = 0;
+        s.alpha[q] = (0.12 + 0.75 * all) * (Math.floor(f * 16) % 2 ? 0 : 1);
+      }
+      s._e = e; s._all = all; s._sp = spread;
+    };
+    s.dyn(0, 0);
+    s.spin = spinOf(STAGE.cx, STAGE.cy, 0.2, 0.35, -0.1);
+    const names = ["日／週／月", "4H／1H", "1／5／15 分"];
+    s.labels = names.map((t, j) => ({ t, cls: "l", f: o => { o[0] = x0 - 0.3; o[1] = yc[j] + bh / 2 + 1.0 + (1 - j) * (s._sp || 0); o[2] = 0; return 0.45 + 0.55 * Math.max(s._e ? s._e[j] : 0, s._all || 0); } }));
+    return finish(s);
+  }
+
+  // ---- 火箭模型：強跌起點留下一道牆 → 下面盤整累積燃料 → 突破帶缺口靠慣性往上 → 停在牆下 ----
+  const RK = (() => {
+    const k = [
+      { o: 88, c: 91, hi: 92.5, lo: 87 }, { o: 91, c: 82, hi: 92, lo: 80.5 }, { o: 82, c: 58, hi: 82.5, lo: 57 }, { o: 58, c: 44, hi: 60, lo: 43 }
+    ];
+    const fz = [[44, 36], [36, 39], [39, 35], [35, 38.5], [38.5, 34.5], [34.5, 38], [38, 35.5], [35.5, 39], [39, 36], [36, 38.5], [38.5, 35], [35, 38]];
+    fz.forEach(([o, c], i) => k.push({ o, c, hi: (i % 3 === 1) ? 40 : Math.max(o, c) + 0.7, lo: Math.min(o, c) - 0.8, touch: i % 3 === 1 }));
+    const b0 = k.length;
+    k.push({ o: 38, c: 47, hi: 47.5, lo: 37.6 }, { o: 47, c: 60, hi: 61, lo: 46.5 }, { o: 60, c: 69, hi: 70, lo: 58 }, { o: 69, c: 75, hi: 76.5, lo: 68.5 }, { o: 75, c: 77.5, hi: 79.6, lo: 74.4 }, { o: 77.5, c: 76, hi: 79, lo: 75 });
+    return { k, b0, line: 40, gap: [47.5, 58], wall: [80.5, 87], top: 79.6, pmin: 30, pmax: 94 };
+  })();
+  function buildRocket() {
+    const s = newShape(), G = new Int8Array(N).fill(-1), L = RK.k.length;
+    const x0 = STAGE.cx - STAGE.hw * 0.92, x1 = STAGE.cx + STAGE.hw * 0.66, yb = STAGE.cy - STAGE.hh * 0.95, yt = STAGE.cy + STAGE.hh * 0.8;
+    const Y = v => yb + (v - RK.pmin) / (RK.pmax - RK.pmin) * (yt - yb), dx = (x1 - x0) / L, X = k => x0 + (k + 0.5) * dx;
+    const nc = Math.floor(N * 0.3), nl = Math.floor(N * 0.03), nt = Math.floor(N * 0.02), ng = Math.floor(N * 0.05), nw = Math.floor(N * 0.13), nr = Math.floor(N * 0.15), nfl = Math.floor(N * 0.06);
+    const iL = nc, iT = iL + nl, iG = iT + nt, iW = iG + ng, iR = iW + nw, iF = iR + nr, iD = iF + nfl;
+    const { K, U } = candleParams(nc, RK.k.map(c => Math.abs(c.c - c.o) + 1.2));
+    for (let i = 0; i < nc; i++) G[i] = RK.k[K[i]].touch !== undefined || (K[i] >= 4 && K[i] < RK.b0) ? 0 : K[i] < 4 ? 2 : 1;
+    for (let i = iL; i < iT; i++) { G[i] = 0; setC(s, i, GOLD_DK, GOLD_LT); s.size[i] = 0.13; }
+    for (let i = iT; i < iG; i++) { G[i] = 0; setC(s, i, GOLD, CREAM); s.size[i] = 0.2; }
+    for (let i = iG; i < iW; i++) { G[i] = 1; setC(s, i, mix3(GOLD, OXBLUE, 0.4), OXBLUE_LT); s.size[i] = 0.12; }
+    for (let i = iW; i < iR; i++) { G[i] = 2; setC(s, i, mix3(DOWN, INK, 0.12), bright(DOWN)); s.size[i] = 0.19; }
+    // 火箭：畫在畫布上取點（機身、鼻錐、兩片尾翼、圓窗）
+    const body = sampleCanvas(120, 240, g => {
+      g.fillStyle = "#fff";
+      g.beginPath(); g.moveTo(60, 8); g.bezierCurveTo(92, 40, 94, 120, 86, 186); g.lineTo(34, 186); g.bezierCurveTo(26, 120, 28, 40, 60, 8); g.fill();
+      g.beginPath(); g.moveTo(34, 140); g.lineTo(10, 206); g.lineTo(38, 192); g.fill();
+      g.beginPath(); g.moveTo(86, 140); g.lineTo(110, 206); g.lineTo(82, 192); g.fill();
+      g.fillRect(44, 186, 32, 12);
+      g.globalCompositeOperation = "destination-out"; g.beginPath(); g.arc(60, 84, 13, 0, 6.283); g.fill();
+      g.globalCompositeOperation = "source-over"; g.fillStyle = "rgb(80,160,255)"; g.beginPath(); g.arc(60, 84, 8, 0, 6.283); g.fill();
+    }, 2);
+    const Hr = STAGE.hh * 0.42, RB = new Float32Array(N * 2);
+    { const n = body.pts.length / 5; for (let i = iR; i < iF; i++) {
+      const j = Math.floor((i - iR) / nr * n) * 5, px = body.pts[j], py = body.pts[j + 1], win = body.pts[j + 2] < 200;
+      RB[i * 2] = (px - 60) / 240 * Hr; RB[i * 2 + 1] = -(py - 120) / 240 * Hr;
+      G[i] = 3; setC(s, i, win ? OXBLUE : mix3(INK, GOLD_DK, 0.55), win ? OXBLUE_LT : CREAM); s.size[i] = win ? 0.2 : 0.17;
+    } }
+    for (let i = iF; i < iD; i++) { G[i] = 4; setC(s, i, FLAME, [1, 0.78, 0.4]); }
+    fillDust(s, iD, STAGE, 1.3);
+    s.grp = G;
+    const R = Array.from({ length: N }, () => rand()), o3 = [0, 0, 0];
+    // 火箭走的路：從燃料區的線起飛，沿著突破那幾根往上，停在牆下
+    const path = [[X(RK.b0 - 1) + dx * 0.3, Y(RK.line) - Hr * 0.5]];   // 火箭的鼻尖就是價格的頭
+    for (let k = RK.b0; k < L - 1; k++) path.push([X(k), Y(RK.k[k].hi) - Hr * 0.5]);
+    path.push([X(L - 2) + dx * 0.3, Y(RK.top) - Hr * 0.5]);
+    const seg = []; let tot = 0;
+    for (let k = 1; k < path.length; k++) { const l = Math.hypot(path[k][0] - path[k - 1][0], path[k][1] - path[k - 1][1]); seg.push(l); tot += l; }
+    const along = u => { let d = u * tot; for (let k = 0; k < seg.length; k++) { if (d <= seg[k] || k === seg.length - 1) { const f = clamp(d / seg[k], 0, 1); return [lerp(path[k][0], path[k + 1][0], f), lerp(path[k][1], path[k + 1][1], f), Math.atan2(path[k + 1][0] - path[k][0], path[k + 1][1] - path[k][1])]; } d -= seg[k]; } return [...path[path.length - 1], 0]; };
+    let hitAt = -9, wasUp = false;
+    s.dyn = (t, p, ta = -1) => {
+      const e = [1 - sstep(0.26, 0.32, p), sstep(0.26, 0.32, p) * (1 - sstep(0.52, 0.58, p)), sstep(0.52, 0.58, p)], all = sstep(0.78, 0.84, p);
+      const fly = sstep(0.3, 0.55, p);                       // 照字幕：燃料時待在線上、慣性時往上衝、牆的時候停下來
+      const up = fly >= 0.999;
+      if (up && !wasUp) hitAt = t;
+      wasUp = up;
+      const bump2 = up ? Math.sin(Math.min(1, (t - hitAt) / 0.6) * Math.PI) * Math.exp(-(t - hitAt) * 3) * Hr * 0.35 : 0;
+      const ign = ta >= 0 ? Math.min(1, ta / 0.8) : 0;     // 到的時候點火
+      const pos = along(fly), ang = lerp(0, pos[2], bump(fly, 0, 1) * 0.9);
+      const rx = pos[0], ry = pos[1] - bump2 + (fly <= 0.001 ? Math.sin(t * 40) * 0.04 * ign : Math.sin(t * 2) * 0.12 * (up ? 1 : 0));
+      const reveal = fly <= 0 ? RK.b0 : RK.b0 + (L - RK.b0) * fly + 0.4;
+      // K 棒
+      const dxx = drawCandles(s, 0, nc, K, U, RK.k, x0, x1, Y, 0.62);
+      for (let i = 0; i < nc; i++) {
+        const k = K[i], g = G[i], em = Math.max(e[g] ?? 0, all);
+        const v = k < RK.b0 ? 1 : clamp(reveal - k, 0, 1);
+        if (v < 1) { const kk = RK.k[k]; onCandle(s.pos, i * 3, X(k), dxx * 0.62, Y(kk.o), Y(kk.o + (kk.c - kk.o) * v), Y(Math.min(kk.o, kk.c)), Y(lerp(Math.max(kk.o, kk.c), kk.hi, v)), U[i * 3], U[i * 3 + 1], U[i * 3 + 2], false); }
+        s.alpha[i] = 0.95 * Math.min(1, v * 2) * (0.3 + 0.7 * em);
+      }
+      // 燃料的線＋多次測試的點
+      for (let i = iL; i < iT; i++) { const u = R[i]; s.pos[i * 3] = lerp(X(4) - dx * 0.5, X(RK.b0) + dx * 0.4, u); s.pos[i * 3 + 1] = Y(RK.line); s.pos[i * 3 + 2] = 0.1; s.alpha[i] = (0.3 + 0.7 * Math.max(e[0], all)) * (Math.floor(u * 50) % 2 ? 0.25 : 1); }
+      const touches = RK.k.map((c, k) => c.touch ? k : -1).filter(k => k >= 0);
+      for (let i = iT; i < iG; i++) { const k = touches[i % touches.length], a = R[i] * 6.283 + t * 1.5, rr = dx * (0.55 + 0.25 * Math.sin(t * 4 + k)); s.pos[i * 3] = X(k) + Math.cos(a) * rr; s.pos[i * 3 + 1] = Y(RK.line) + Math.sin(a) * rr; s.pos[i * 3 + 2] = 0.2; s.alpha[i] = 0.85 * Math.max(e[0], all * 0.5); }
+      // 缺口：突破那幾根中間沒被碰過的空白
+      for (let i = iG; i < iW; i++) {
+        const u = R[i], w = R[(i + 13) % N], xa = X(RK.b0) - dx * 0.3, xb = x1 + dx * 0.3, edge = w < 0.5;
+        s.pos[i * 3] = lerp(xa, xb, u); s.pos[i * 3 + 1] = edge ? Y(w < 0.25 ? RK.gap[0] : RK.gap[1]) : lerp(Y(RK.gap[0]), Y(RK.gap[1]), (w - 0.5) * 2); s.pos[i * 3 + 2] = 0;
+        s.alpha[i] = (edge ? (Math.floor(u * 40) % 2 ? 0 : 0.9) : 0.18) * Math.min(1, reveal - RK.b0 - 1.5) * (0.3 + 0.7 * Math.max(e[1], all));
+      }
+      // 牆：強跌起點那根的範圍，往右延伸
+      const wallGlow = up ? 1 + 1.2 * Math.exp(-(t - hitAt) * 2) : 1;
+      for (let i = iW; i < iR; i++) {
+        const u = R[i], w = R[(i + 17) % N], edge = w < 0.3;   // 牆是一整塊實心的帶子
+        s.pos[i * 3] = lerp(X(1) - dx * 0.45, x1 + dx * 0.5, u); s.pos[i * 3 + 1] = edge ? Y(w < 0.15 ? RK.wall[0] : RK.wall[1]) : lerp(Y(RK.wall[0]), Y(RK.wall[1]), (w - 0.3) / 0.7); s.pos[i * 3 + 2] = (w - 0.5) * 0.4;
+        s.alpha[i] = Math.min(1, (edge ? 0.95 : 0.62) * (0.55 + 0.45 * Math.max(e[2], all)) * (edge && w < 0.22 ? wallGlow : 1));
+      }
+      // 火箭本體（往飛的方向傾斜）
+      const ca = Math.cos(-ang), sa = Math.sin(-ang);
+      for (let i = iR; i < iF; i++) { const bx = RB[i * 2], by = RB[i * 2 + 1]; s.pos[i * 3] = rx + bx * ca - by * sa; s.pos[i * 3 + 1] = ry + bx * sa + by * ca; s.pos[i * 3 + 2] = 0.5 + (R[i] - 0.5) * 0.5; s.alpha[i] = 0.95; }
+      // 火焰：點火後變長，往上衝時最長
+      const thrust = (0.25 + 0.75 * ign) * (fly > 0 && fly < 1 ? 1.6 : up ? 0.7 : 1);
+      for (let i = iF; i < iD; i++) {
+        const life = (R[i] + t * (2.2 + R[(i + 5) % N])) % 1, spread = (R[(i + 9) % N] - 0.5) * Hr * 0.22 * (0.4 + life);
+        const by = -Hr * 0.36 - life * Hr * 0.7 * thrust, bx = spread;
+        s.pos[i * 3] = rx + bx * ca - by * sa; s.pos[i * 3 + 1] = ry + bx * sa + by * ca; s.pos[i * 3 + 2] = 0.4;
+        s.size[i] = (0.28 - life * 0.2) * (0.6 + 0.6 * thrust); s.alpha[i] = (1 - life) * 0.9 * (ign > 0 || fly > 0 ? 1 : 0.35);
+      }
+      s._rk = { e, all, rx, ry };
+    };
+    s.dyn(0, 0);
+    s.spin = spinOf(STAGE.cx, STAGE.cy, 0.16, 0.3, -0.05);
+    s.labels = [
+      { t: "燃料", f: o => { o[0] = X(9); o[1] = Y(31.5); o[2] = 0; return 0.4 + 0.6 * Math.max(s._rk ? s._rk.e[0] : 1, s._rk ? s._rk.all : 0); } },
+      { t: "慣性", f: o => { o[0] = X(RK.b0 + 3.4); o[1] = Y((RK.gap[0] + RK.gap[1]) / 2); o[2] = 0; return s._rk ? (0.15 + 0.85 * Math.max(s._rk.e[1], s._rk.all)) : 0; } },
+      { t: "牆", f: o => { o[0] = X(L - 1) + dx * 1.2; o[1] = Y((RK.wall[0] + RK.wall[1]) / 2); o[2] = 0; return s._rk ? (0.3 + 0.7 * Math.max(s._rk.e[2], s._rk.all)) : 0; } }
+    ];
+    s.rocketHead = () => s._rk ? [s._rk.rx, s._rk.ry] : [0, 0];
+    return finish(s);
+  }
+
+  // ---- 突破進場：真的比特幣週線（2022/8/29 到 2024/12/9，電腦 120 根、手機最後 64 根） ----
+  // 頂分型：2024/3/4、3/11（73,777）、3/18 跌破；回撤盤整到 8/5 的 49,000；11/4 那週突破
+  const BTCW = [[19556,20576,19540,20000],[20000,21860,18511,21827],[21827,22799,19320,19416],[19417,19956,18126,18807],[18809,20386,18471,19057],[19058,20475,18960,19439],[19440,19952,18190,19263],[19263,19707,18650,19570],[19570,21085,19157,20627],[20627,21481,20031,20906],[20906,21070,15588,16330],[16332,17190,15815,16280],[16280,16813,15476,16429],[16429,17324,15995,17106],[17107,17424,16679,17085],[17085,18388,16527,16738],[16739,17061,16256,16832],[16832,16973,16333,16617],[16617,17177,16549,17128],[17128,21258,17105,20872],[20873,23372,20407,22708],[22706,23961,22300,23742],[23743,24255,22500,22933],[22933,23452,21451,21784],[21782,25250,21351,24272],[24273,25250,22722,23555],[23555,24000,21971,22430],[22430,22602,19549,21997],[21998,28390,21814,27973],[27973,28868,26602,27968],[27968,29185,26508,28172],[28172,28775,27200,28324],[28324,31000,28170,30305],[30305,30485,27125,27591],[27591,30036,26943,29233],[29233,29820,27667,28430],[28430,28631,25811,26918],[26918,27664,26361,26748],[26748,28261,25872,28065],[28065,28447,26505,27115],[27115,27392,25351,25926],[25926,26840,24800,26340],[26340,31432,26257,30463],[30463,31282,29500,30617],[30617,31500,29701,30161],[30161,31804,29900,30232],[30232,30417,29512,30084],[30084,30100,28862,29281],[29281,30048,28586,29088],[29088,30244,28701,29304],[29304,29695,25166,26190],[26190,26819,25300,26102],[26102,28143,25334,25971],[25971,26446,25373,25842],[25842,26888,24901,26528],[26528,27484,26122,26248],[26248,28066,25990,27993],[27993,28580,27160,27917],[27917,27988,26539,27154],[27154,30380,27113,29992],[29992,35280,29884,34526],[34526,35985,34025,35012],[35012,37972,34523,37064],[37064,37980,34800,37360],[37360,38414,35632,37447],[37447,40250,36707,39972],[39972,44700,39972,43790],[43790,43804,40222,41375],[41375,44398,40543,42992],[42992,43802,41300,42284],[42284,45880,40750,43929],[43929,48969,41500,41732],[41732,43578,40280,41580],[41580,42843,38555,42031],[42031,43882,41805,42583],[42583,48593,42258,48300],[48300,52817,47710,52138],[52138,52985,50521,51729],[51729,64000,50901,63114],[63114,69990,59005,68956],[68956,73777,64533,68393],[68393,68956,60775,67210],[67210,71770,66385,71280],[71280,71288,64493,69360],[69360,72798,60661,65662],[65662,66867,59600,64941],[64941,67232,62391,63119],[63119,64734,56553,64012],[64012,65500,60187,61484],[61484,67700,60749,66274],[66274,71979,66060,68508],[68508,70688,66670,67766],[67766,71997,67612,69648],[69648,70196,65078,66677],[66677,67299,63178,63210],[63210,63370,58402,62772],[62772,63862,53486,55858],[55858,61421,54260,60798],[60798,68367,60632,68165],[68165,69400,63457,68250],[68250,70080,57123,58161],[58161,62745,49000,58713],[58713,61800,56079,58427],[58427,65000,57787,64220],[64220,64481,57201,57302],[57302,59810,52550,54870],[54870,60625,54592,59132],[59132,64133,57493,63579],[63579,66498,62539,65602],[65602,65619,59828,62820],[62820,64478,58946,62870],[62870,69400,62458,69032],[69032,69520,65260,68022],[68022,73620,67479,68776],[68776,81500,66835,80370],[80370,93266,80216,89856],[89856,99588,89377,97900],[97900,98872,90791,97185],[97185,104088,90500,101110],[101110,105250,94150,104464]];
+  const BK = (() => {
+    const L = phoneNow ? 64 : 120, all = BTCW.slice(BTCW.length - L);
+    const out = all.map(([o, h, l, c]) => ({ o: o / 1000, hi: h / 1000, lo: l / 1000, c: c / 1000 }));   // 用千美元當單位
+    const topI = L - 1 - (BTCW.length - 1 - 80), r0 = topI + 2, r1 = L - 6;   // 頂分型第 2 根、回撤從第 3 根之後算、突破那根
+    out.forEach((k, i) => { k.up = k.c >= k.o; if (i >= r1) k.run = true; });
+    out[topI].top = true;
+    const TOP = out[topI].hi;
+    const stop = Math.min(...out.slice(r0, r1).map(k => k.lo));
+    const pmin = Math.min(...out.map(k => k.lo)) * 0.96;
+    return { k: out, L, TOP, stop, pmin, pmax0: TOP * 1.035, pmaxAll: Math.max(...out.map(k => k.hi)) * 1.015, br: r1, run0: r1, topI, r0, r1, RUN: L - r1 };
+  })();
+  const RUN_T0 = 2.2, RUN_DT = 0.62, RUN_GROW = 0.3;
   const runAt = j => RUN_T0 + j * RUN_DT;          // 第 j 根噴發 K 棒出現的時間
-  const RUN_END = runAt(8) + RUN_GROW;
+  const RUN_END = runAt(BK.RUN - 1) + RUN_GROW;
   const SEQ_END = RUN_END + 2.6;
-  const FLIPS = [RUN_T0, RUN_T0 + 0.1, RUN_T0 + 0.2, ...[1, 2, 3, 4, 5, 6, 7, 8].map(runAt), RUN_END + 0.35];   // 黑白切換跟重擊對拍，最後切回來
+  const FLIPS = [RUN_T0, RUN_T0 + 0.1, RUN_T0 + 0.2, ...Array.from({ length: BK.RUN - 1 }, (_, j) => runAt(j + 1)), RUN_END + 0.35];   // 黑白切換跟重擊對拍，最後切回來
   const bseq = { start: -1, played: false, sfx: false, fl: false, hits: 0 };
   const bkState = { reveal: 0, runT: -1, scale: 1, marks: 0, glass: 0 };
   let BG = null;
@@ -642,42 +923,55 @@ function start() {
     s.dyn(0, 0);
     s.stiff = 2.4;
     s.candles = true;
+    const xk = k => x0 + (k + 0.5) * dx;
+    s.labels = [   // 真行情的日期和止損
+      { t: "2024 年 3 月", f: o => { o[0] = xk(BK.topI); o[1] = BG.Y(BK.k[BK.topI].hi, bkState.scale) + 1.3; o[2] = 0; return clamp(bkState.reveal - BK.topI - 1.5, 0, 1); } },
+      { t: "止損", f: o => { o[0] = xk(BK.r0 + 3); o[1] = BG.Y(BK.stop, bkState.scale) - 1.1; o[2] = 0; return bkState.marks; } },
+      { t: "2024 年 11 月", f: o => { const k = BK.k[BK.br], v = bkState.vis ? bkState.vis[BK.br] : 0; o[0] = xk(BK.br); o[1] = BG.Y(Math.min(k.lo, k.o), bkState.scale) - 1.3; o[2] = 0; return clamp(v * 3, 0, 1); } }
+    ];
     return finish(s);
   }
 
   // ---- 書：立體翻開，右邊的書頁會翻過去 ----
-  function buildBook() {
+  function buildBook() {   // 書稿的紙：米色紙、墨色字行、紅色印章和書籤
     const s = newShape();
+    const pageL = g => { g.beginPath(); g.moveTo(300, 80); g.quadraticCurveTo(170, 40, 40, 78); g.lineTo(40, 352); g.quadraticCurveTo(170, 318, 300, 360); g.closePath(); };
+    const pageR = g => { g.beginPath(); g.moveTo(300, 80); g.quadraticCurveTo(430, 40, 560, 78); g.lineTo(560, 352); g.quadraticCurveTo(430, 318, 300, 360); g.closePath(); };
     const smp = sampleCanvas(600, 420, g => {
-      g.strokeStyle = "#fff"; g.lineCap = "round"; g.lineJoin = "round"; g.lineWidth = 10;
-      g.beginPath(); g.moveTo(300, 80); g.quadraticCurveTo(170, 40, 40, 78); g.lineTo(40, 352); g.quadraticCurveTo(170, 318, 300, 360); g.closePath(); g.stroke();
-      g.beginPath(); g.moveTo(300, 80); g.quadraticCurveTo(430, 40, 560, 78); g.lineTo(560, 352); g.quadraticCurveTo(430, 318, 300, 360); g.closePath(); g.stroke();
-      g.lineWidth = 6;
+      g.lineCap = "round"; g.lineJoin = "round";
+      g.strokeStyle = "rgb(255,255,255)"; g.lineWidth = 9; pageL(g); g.stroke(); pageR(g); g.stroke();
+      g.strokeStyle = "rgb(0,255,0)"; g.lineWidth = 5;
       for (let k = 0; k < 7; k++) {
         const y = 118 + k * 30;
         g.beginPath(); g.moveTo(78, y); g.quadraticCurveTo(170, y - 22, 268, y + 4); g.stroke();
         g.beginPath(); g.moveTo(332, y + 4); g.quadraticCurveTo(430, y - 22, k === 6 ? 450 : 522, y); g.stroke();
       }
-      g.lineWidth = 9; g.beginPath(); g.moveTo(470, 60); g.lineTo(470, 120); g.lineTo(485, 106); g.lineTo(500, 120); g.lineTo(500, 60); g.stroke();
+      g.fillStyle = "rgb(255,0,0)"; g.fillRect(470, 268, 50, 50);                                   // 印章
+      g.strokeStyle = "rgb(255,0,0)"; g.lineWidth = 9; g.beginPath(); g.moveTo(470, 60); g.lineTo(470, 120); g.lineTo(485, 106); g.lineTo(500, 120); g.lineTo(500, 60); g.stroke();   // 書籤
     }, 2);
-    const n = Math.floor(N * 0.82), PX = new Float32Array(N);
-    const sc = placeSample(s, smp, 0, n, STAGE, { size: 0.19, jitter: 0.4, color: (r, g, b, px, py) => (px > 460 && py < 125) ? mix3(DOWN, GOLD, 0.4) : goldish(),
-      z: px => -Math.abs(px - 300) / 260 * STAGE.hw * 0.35, tag: (i, px) => { PX[i] = px; } });
-    fillDust(s, n, STAGE, 1.5);
-    const BASE = s.pos.slice(0, n * 3);
-    // 翻頁：另外一組粒子組成一張書頁，從右邊繞書脊翻到左邊
-    const nf = Math.floor(n * 0.12), F = [];
-    for (let i = 0; i < n && F.length < nf; i++) if (PX[i] > 320 && PX[i] < 540) F.push(i);
-    s.dyn = t => {
-      const c = t % 4.2, ang = Math.PI * sstep(0.6, 2.4, c), fade = 1 - sstep(2.6, 3.2, c);
+    const fill = sampleCanvas(600, 420, g => { g.fillStyle = "#fff"; pageL(g); g.fill(); pageR(g); g.fill(); }, 5);
+    const n = Math.floor(N * 0.6), nfill = Math.floor(N * 0.24), PX = new Float32Array(N);
+    const zf = px => -Math.abs(px - 300) / 260 * STAGE.hw * 0.35;
+    const sc = placeSample(s, smp, 0, n, STAGE, { size: 0.18, jitter: 0.4, z: zf, tag: (i, px) => { PX[i] = px; },
+      color: (r, g, b) => r > 200 && g < 100 ? SEAL : g > 200 && r < 100 ? mix3(INK, GOLD_DK, 0.35) : mix3(GOLD_DK, BOOKPAPER, 0.25),
+      colorD: c => c === SEAL ? [0.85, 0.3, 0.24] : c[0] < 0.5 ? mix3(GOLD_DK, GOLD, 0.6) : BOOKPAPER });
+    placeSample(s, fill, n, n + nfill, STAGE, { size: 0.24, alpha: 0.22, jitter: 2, z: zf, color: () => mix3(BOOKPAPER, GOLD_LT, 0.25), colorD: () => mix3(BOOKPAPER, GOLD_LT, 0.15), tag: (i, px) => { PX[i] = px; } });
+    fillDust(s, n + nfill, STAGE, 1.5);
+    const BASE = s.pos.slice(0, (n + nfill) * 3);
+    // 翻頁：右邊一部分粒子組成一張書頁，繞書脊翻到左邊（到的時候翻一次）
+    const F = [];
+    for (let i = 0; i < n + nfill; i++) if (PX[i] > 320 && PX[i] < 540 && (i >= n || rand() < 0.25)) F.push(i);
+    s.dyn = (t, p, ta = -1) => {
+      const c = ta >= 0 ? ta : 99, back = c >= 2.5, ang = back ? 0 : Math.PI * sstep(0.4, 1.9, c);
+      const vis = back ? sstep(2.5, 3.3, c) : 1 - sstep(2.0, 2.5, c);   // 翻到左邊後淡掉，右邊再長回來
       for (const i of F) {
         const bx = BASE[i * 3] - STAGE.cx, bz = BASE[i * 3 + 2];
-        s.pos[i * 3] = STAGE.cx + bx * Math.cos(ang); s.pos[i * 3 + 2] = bz + bx * Math.sin(ang) * 0.9; s.pos[i * 3 + 1] = BASE[i * 3 + 1];
-        s.alpha[i] = 0.95 * (ang > 0.01 ? fade : 1);
+        s.pos[i * 3] = STAGE.cx + bx * Math.cos(ang); s.pos[i * 3 + 2] = bz + bx * Math.sin(ang) * 0.9; s.pos[i * 3 + 1] = BASE[i * 3 + 1] + Math.sin(ang) * 0.6;
+        s.alpha[i] = (i >= n ? 0.22 : 0.95) * vis;
       }
     };
-    s.spin = spinOf(STAGE.cx, STAGE.cy, 0.35, 0.45, -0.32);
-    s.bright = 1.15;
+    s.spin = spinOf(STAGE.cx, STAGE.cy, 0.3, 0.42, -0.32);
+    s.bright = 1.1;
     return finish(s);
   }
 
@@ -701,10 +995,9 @@ function start() {
     };
     return finish(s);
   }
-  const buildQuote = (q, i) => finish(textShape("q" + i, phone ? q.p : q.d, QUOTE, 150, 0.9));
-
   // ---- OX：傾斜的雷達＋手畫一個 W ----
   function buildOx() {
+    const STAGE = phone ? TOPC : mainStage();   // 手機卡片比較高，主角放在上面
     const s = newShape();
     const R0 = Math.min(STAGE.hw, STAGE.hh) * 0.98, tilt = -0.9, ct = Math.cos(tilt), st = Math.sin(tilt);
     const nr = Math.floor(N * 0.22), ns = Math.floor(N * 0.05), nw = Math.floor(N * 0.1), np = Math.floor(N * 0.4), nt = Math.floor(N * 0.04);
@@ -719,7 +1012,7 @@ function start() {
     fillDust(s, nEnd, STAGE, 1.4);
     for (let j = 0; j < nEnd; j++) {
       const k = T[j];
-      setC(s, j, k === 0 || k === 1 ? mix3(BLUE, BLUE_LT, rand()) : k === 2 ? GOLD_LT : k === 3 ? goldish() : CREAM);
+      setC(s, j, k === 0 || k === 1 ? mix3(OXBLUE, OXBLUE_LT, rand() * 0.6) : k === 2 ? mix3(OXBLUE_LT, GOLD_LT, 0.5) : k === 3 ? goldish() : CREAM);
       s.size[j] = k === 3 ? 0.21 : k === 4 ? 0.26 : 0.13;
       s.alpha[j] = k === 0 ? 0.55 : k === 1 ? 0.25 : 0.95;
     }
@@ -728,8 +1021,8 @@ function start() {
     for (let k = 1; k < Wp.length; k++) { const l = Math.hypot(Wp[k][0] - Wp[k - 1][0], Wp[k][1] - Wp[k - 1][1]); segL.push(l); tot += l; }
     const at = u => { let d = u * tot; for (let k = 0; k < segL.length; k++) { if (d <= segL[k] || k === segL.length - 1) { const f = clamp(d / segL[k], 0, 1); return [lerp(Wp[k][0], Wp[k + 1][0], f), lerp(Wp[k][1], Wp[k + 1][1], f)]; } d -= segL[k]; } return Wp[Wp.length - 1]; };
     const disc = (x, y) => [STAGE.cx + x, STAGE.cy - STAGE.hh * 0.18 + y * ct, y * st];   // 雷達平躺、往後傾
-    s.dyn = t => {
-      const cyc = t % 6.2, draw = clamp(cyc / 2.6, 0, 1), fade = 1 - sstep(4.8, 5.6, cyc), sw = t * 1.3;
+    s.dyn = (t, p, ta = -1) => {   // 到的時候手畫一次 W，雷達一直慢慢掃
+      const draw = ta >= 0 ? clamp((ta - 0.3) / 2.4, 0, 1) : 0, fade = 1, sw = t * 1.3;
       const pp = at(draw), penX = STAGE.cx + pp[0] * STAGE.hw * 0.95, penY = STAGE.cy + pp[1] * STAGE.hh * 0.75 + STAGE.hh * 0.12;
       for (let j = 0; j < nEnd; j++) {
         const k = T[j], a = R[j * 2], b = R[j * 2 + 1];
@@ -752,6 +1045,7 @@ function start() {
 
   // ---- 合成市場：立體的球 ----
   function buildMerge() {
+    const STAGE = phone ? TOPC : mainStage();   // 手機卡片比較高，主角放在上面
     const s = newShape();
     const nb = Math.floor(N * 0.8), U = new Float32Array(N * 3), cols = [GOLD, BLUE_LT, GOLD_LT, CREAM];
     for (let i = 0; i < nb; i++) {
@@ -761,8 +1055,8 @@ function start() {
     }
     fillDust(s, nb, STAGE, 1.4);
     const rA = Math.min(STAGE.hw, STAGE.hh) * 0.3, A = [[-0.5, 0.45], [0.5, 0.45], [-0.5, -0.45], [0.5, -0.45]];
-    s.dyn = t => {
-      const c = t % 6.2, m1 = sstep(1.6, 2.4, c), m2 = sstep(3.4, 4.2, c), pop = sstep(5.5, 6.1, c);
+    s.dyn = (t, p, ta = -1) => {   // 到的時候四顆合成兩顆、再合成一顆大的，之後停在一顆
+      const c = ta >= 0 ? ta : 0, m1 = sstep(0.5, 1.3, c), m2 = sstep(1.9, 2.7, c), pop = 0;
       const spin = t * 0.7, cs = Math.cos(spin), sn = Math.sin(spin);
       for (let i = 0; i < nb; i++) {
         const j = i % 4;
@@ -794,8 +1088,8 @@ function start() {
       tag: (i, px, py) => { PL[i] = (px > 210 && px < 330 && py > 110 && py < 250) ? 1 : 0; } });
     fillDust(s, n, TOPC, 1.6);
     for (let i = 0; i < n; i++) { BASE[i * 2] = s.pos[i * 3]; BASE[i * 2 + 1] = s.pos[i * 3 + 1]; }
-    s.dyn = t => {   // 播放鍵一跳一跳
-      const k = 1 + 0.12 * Math.max(0, Math.sin(t * 3));
+    s.dyn = (t, p, ta = -1) => {   // 到的時候播放鍵跳幾下
+      const k = 1 + (ta >= 0 ? 0.16 * Math.max(0, Math.sin(ta * 7)) * Math.exp(-ta * 1.1) : 0);
       for (let i = 0; i < n; i++) if (PL[i]) { s.pos[i * 3] = TOPC.cx + (BASE[i * 2] - TOPC.cx) * k; s.pos[i * 3 + 1] = TOPC.cy + (BASE[i * 2 + 1] - TOPC.cy) * k; s.pos[i * 3 + 2] = 1.5 * (k - 1) * 8; }
     };
     s.spin = spinOf(TOPC.cx, TOPC.cy, 0.3, 0.4, -0.1);
@@ -803,45 +1097,175 @@ function start() {
     return finish(s);
   }
 
-  // ---- 結尾：雙極 logo，兩半分開又合起來、慢慢轉 ----
-  function buildLogo(img) {
+  // ---- 金句：光筆照筆順一筆一筆寫（楷書筆順資料，Make Me a Hanzi） ----
+  let STROKES = null;
+  const penState = { q0: { t0: -1, done: false }, q1: { t0: -1, done: false }, q2: { t0: -1, done: false }, q3: { t0: -1, done: false } };
+  function buildPenQuote(q, qi) {
+    const key = "q" + qi, lines = phone ? q.p : q.d, s = newShape();
+    const maxC = Math.max(...lines.map(l => [...l].length));
+    const cell = Math.min(QUOTE.hw * 2 / maxC, QUOTE.hh * 2 / (lines.length * 1.16)), lh = cell * 1.16;
+    const RES = 96, cv = document.createElement("canvas"); cv.width = cv.height = RES;
+    const g = cv.getContext("2d", { willReadFrequently: true });
+    const pts = [], strokes = [], svgParts = [];
+    let gs = 0;
+    lines.forEach((l, li) => {
+      const cs = [...l], top = QUOTE.cy + lines.length * lh / 2 - li * lh - (lh - cell) / 2;
+      cs.forEach((ch, ci) => {
+        const d = STROKES && STROKES[ch]; if (!d) return;
+        const left = QUOTE.cx - cs.length * cell / 2 + ci * cell;
+        const W = (X, Yv) => [left + X / 1024 * cell, top - (900 - Yv) / 1024 * cell];   // 筆順資料的座標（y 往上）換成世界座標
+        const occ = new Uint8Array(RES * RES);
+        svgParts.push(`<g transform="translate(${left.toFixed(3)} ${(-top).toFixed(3)}) scale(${(cell / 1024).toFixed(5)} ${(-cell / 1024).toFixed(5)}) translate(0 -900)">${d.s.map(p => `<path d="${p}"/>`).join("")}</g>`);
+        d.s.forEach((path, k) => {
+          g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, RES, RES);
+          g.setTransform(RES / 1024, 0, 0, -RES / 1024, 0, 900 * RES / 1024);
+          g.fillStyle = "#fff"; g.fill(new Path2D(path));
+          const px = g.getImageData(0, 0, RES, RES).data;
+          const med = d.m[k].map(([X, Yv]) => [X * RES / 1024, (900 - Yv) * RES / 1024]);
+          const cum = [0]; for (let m = 1; m < med.length; m++) cum.push(cum[m - 1] + Math.hypot(med[m][0] - med[m - 1][0], med[m][1] - med[m - 1][1]));
+          const tot = cum[cum.length - 1] || 1;
+          for (let y = 0; y < RES; y += 2) for (let x = 0; x < RES; x += 2) {
+            const o = y * RES + x;
+            if (px[o * 4 + 3] < 120 || occ[o]) continue;
+            occ[o] = 1;
+            let best = 1e9, bu = 0;   // 這一點在這一筆的哪裡（投影到中心線）
+            for (let m = 1; m < med.length; m++) {
+              const ax = med[m - 1][0], ay = med[m - 1][1], bx = med[m][0] - ax, by = med[m][1] - ay, L2 = bx * bx + by * by || 1;
+              const f = clamp(((x - ax) * bx + (y - ay) * by) / L2, 0, 1), dd = (x - ax - bx * f) ** 2 + (y - ay - by * f) ** 2;
+              if (dd < best) { best = dd; bu = (cum[m - 1] + f * Math.sqrt(L2)) / tot; }
+            }
+            const wp = W(x / RES * 1024, 900 - y / RES * 1024);
+            pts.push(wp[0], wp[1], gs + bu * 0.999);
+          }
+          strokes.push(d.m[k].map(([X, Yv]) => W(X, Yv)));
+          gs++;
+        });
+      });
+    });
+    const n = Math.floor(N * 0.86), np = Math.floor(N * 0.025), K = new Float32Array(N).fill(1e9), TG = new Float32Array(N * 2);
+    const cnt = Math.max(1, pts.length / 3);
+    for (let i = 0; i < n; i++) {
+      const j = Math.min(cnt - 1, Math.floor(i * cnt / n + rand() * cnt / n)) * 3;
+      TG[i * 2] = (pts[j] ?? QUOTE.cx) + (rand() - 0.5) * cell * 0.012; TG[i * 2 + 1] = (pts[j + 1] ?? QUOTE.cy) + (rand() - 0.5) * cell * 0.012; K[i] = pts[j + 2] ?? 0;
+      s.pos[i * 3] = TG[i * 2]; s.pos[i * 3 + 1] = TG[i * 2 + 1]; s.pos[i * 3 + 2] = (rand() - 0.5) * 0.4;
+      setC(s, i, rand() < 0.15 ? CREAM : goldish()); s.size[i] = 0.15 * (0.8 + rand() * 0.4); s.alpha[i] = 0.95;
+    }
+    for (let i = n; i < n + np; i++) { setC(s, i, [1, 0.97, 0.88], [1, 0.97, 0.88]); s.size[i] = 0.2 + rand() * 0.16; s.alpha[i] = 0; }
+    fillDust(s, n + np, QUOTE, 1.2);
+    // 筆的時間表：每一筆照長度寫，筆畫之間提筆移過去
+    const slen = strokes.map(m => { let l = 0; for (let k = 1; k < m.length; k++) l += Math.hypot(m[k][0] - m[k - 1][0], m[k][1] - m[k - 1][1]); return l || 0.01; });
+    const nChars = lines.join("").length, totalLen = slen.reduce((a, b) => a + b, 0) || 1;
+    const T = 1.1 + 0.17 * nChars, gap = 0.05, speed = totalLen / Math.max(0.5, T - gap * strokes.length);
+    const st0 = []; let acc = 0;
+    slen.forEach(l => { st0.push(acc); acc += l / speed + gap; });
+    const total = acc;
+    const tipAt = (k, f, o) => {   // 第 k 筆、走到 f 的位置
+      const m = strokes[k]; if (!m) return; let d = f * slen[k];
+      for (let q = 1; q < m.length; q++) { const l = Math.hypot(m[q][0] - m[q - 1][0], m[q][1] - m[q - 1][1]); if (d <= l || q === m.length - 1) { const u = clamp(d / (l || 1), 0, 1); o[0] = lerp(m[q - 1][0], m[q][0], u); o[1] = lerp(m[q - 1][1], m[q][1], u); return; } d -= l; }
+    };
+    const tip = [0, 0], R = Array.from({ length: np }, () => [rand() * 6.283, rand()]);
+    const P0 = strokes.length ? strokes[0][0] : [QUOTE.cx, QUOTE.cy];
+    const ps = penState[key];
+    s.pen = true;
+    s.dyn = (t) => {
+      const el = ps.t0 < 0 ? -1 : clock - ps.t0;
+      let W = -1;
+      if (el < 0) { tip[0] = P0[0]; tip[1] = P0[1]; }
+      else if (el >= total) { W = 1e8; tipAt(strokes.length - 1, 1, tip); }
+      else {
+        let k = 0; while (k < strokes.length - 1 && el >= st0[k + 1]) k++;
+        const f = clamp((el - st0[k]) / (slen[k] / speed), 0, 1);
+        W = k + f * 0.999; tipAt(k, f, tip);
+      }
+      for (let i = 0; i < n; i++) {
+        if (K[i] <= W) { s.pos[i * 3] = TG[i * 2]; s.pos[i * 3 + 1] = TG[i * 2 + 1]; s.alpha[i] = 0.95; }
+        else { s.pos[i * 3] = tip[0]; s.pos[i * 3 + 1] = tip[1]; s.alpha[i] = 0; }
+      }
+      const writing = el >= 0 && el < total, glow = writing ? 1 : el < 0 ? 0.6 : Math.max(0, 1 - (el - total) / 0.6);
+      for (let i = n; i < n + np; i++) {   // 筆尖的光
+        const r = R[i - n], a = r[0] + t * (5 + r[1] * 4), rr = cell * 0.05 * (0.3 + r[1]);
+        s.pos[i * 3] = tip[0] + Math.cos(a) * rr; s.pos[i * 3 + 1] = tip[1] + Math.sin(a) * rr; s.pos[i * 3 + 2] = 0.6;
+        s.alpha[i] = glow * (0.5 + 0.5 * r[1]);
+      }
+      s._tip = writing ? tip : null;
+      if (el >= total && !ps.done) { ps.done = true; ps.doneAt = clock; dispatchEvent(new CustomEvent("sn:penDone", { detail: { key } })); }
+    };
+    s.dyn(0);
+    // 寫完之後浮出清楚的字（同一套筆畫的向量圖）
+    const minX = QUOTE.cx - maxC * cell / 2, topY = QUOTE.cy + lines.length * lh / 2, wv = maxC * cell, hv = lines.length * lh;
+    TEXT[key] = { svg: `<svg viewBox="${minX.toFixed(3)} ${(-topY).toFixed(3)} ${wv.toFixed(3)} ${hv.toFixed(3)}" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="pg${qi}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff3cf"/><stop offset=".55" stop-color="#e9c46f"/><stop offset="1" stop-color="#b8862e"/></linearGradient></defs><g fill="url(#pg${qi})">${svgParts.join("")}</g></svg>`,
+      rect: { cx: minX + wv / 2, cy: topY - hv / 2 }, w: wv, h: hv, n };
+    s.text = true;
+    return finish(s);
+  }
+
+  // ---- 結尾：新 logo（炭黑＋亮藍兩半），兩半合起來；粒子一路流進 LINE 官方按鈕變綠 ----
+  const LOGO_D = "M534 16L503 8L476 8L461 11L434 22L93 221L78 232L64 246L57 255L45 277L38 301L36 332L36 663L41 693L53 719L74 745L93 759L180 812L190 812L196 809L202 802L207 788L207 557L211 532L216 515L232 481L251 454L272 431L326 378L361 353L394 337L432 326L468 322L501 324L524 329L545 337L564 347L582 360L619 397L634 405L647 408L668 407L690 398L703 388L711 379L722 359L727 335L727 187L724 163L715 140L701 120L687 107L584 44Z";
+  const LOGO_B = "M800 168L789 168L782 172L774 185L772 196L773 399L770 428L762 458L746 494L729 521L680 576L652 602L625 622L590 641L556 652L518 657L481 655L459 650L433 640L410 627L398 618L371 590L362 583L351 577L338 573L312 574L291 583L277 594L269 603L259 621L253 644L253 796L257 816L266 838L278 855L298 873L444 961L460 967L480 971L512 969L536 961L885 760L903 747L912 738L925 721L934 704L940 686L943 663L943 317L941 299L936 281L928 264L919 250L905 234L887 220Z";
+  let endBtn = null;
+  const endOAEl = document.querySelector("#end .lbtn.oa"), endCardEl = document.querySelector("#end > .copy");
+  function buildLogo() {
     const s = newShape();
-    const smp = sampleCanvas(300, 300, g => g.drawImage(img, 0, 0, 300, 300), 2);
-    const n = Math.floor(N * 0.8), R = Math.min(STAGE.hw, STAGE.hh) * 1.12, rect = { cx: STAGE.cx, cy: STAGE.cy, hw: R, hh: R };
+    const smp = sampleCanvas(300, 300, g => {
+      g.setTransform(300 / 980, 0, 0, 300 / 980, 0, 0);
+      g.fillStyle = "rgb(255,255,255)"; g.fill(new Path2D(LOGO_D));
+      g.fillStyle = "rgb(0,0,255)"; g.fill(new Path2D(LOGO_B));
+    }, 2);
+    const ST = phone ? STAGE : { cx: 0, cy: Hw * 0.22, hw: Ww * 0.2, hh: Hw * 0.2 };   // 電腦版卡片在下面正中間，logo 放上面
+    const n = Math.floor(N * 0.74), R = Math.min(ST.hw, ST.hh) * 0.95, rect = { cx: ST.cx, cy: ST.cy + ST.hh * 0.12, hw: R, hh: R };
     const HALF = new Int8Array(N);
-    placeSample(s, smp, 0, n, rect, { size: 0.21, jitter: 0.4, depth: 1.2, color: (r, g, b) => (r + g + b) / 3 < 130 ? mix3(BLUE, BLUE_LT, rand()) : mix3(GOLD_LT, CREAM, rand()),
-      tag: (i, px, py) => { HALF[i] = px + py < 300 ? 0 : 1; } });
+    placeSample(s, smp, 0, n, rect, { size: 0.21, jitter: 0.4, depth: 1.2,
+      color: (r, g, b) => b > 200 && r < 100 ? mix3(OXBLUE, OXBLUE_LT, rand() * 0.4) : mix3(hex(0x2c2f36), GOLD_DK, 0.35 + rand() * 0.3),
+      colorD: c => c[2] > 0.6 ? c : mix3(GOLD_LT, CREAM, rand()),
+      tag: (i, px, py) => { HALF[i] = 0; } });
+    for (let i = 0; i < n; i++) HALF[i] = s.col[i * 3 + 2] > 0.6 ? 1 : 0;
     const BASE = s.pos.slice(0, n * 3);
-    const H0 = new Float32Array(N * 2);
-    for (let i = n; i < N; i++) { H0[i * 2] = rand() * 6.283; H0[i * 2 + 1] = 1.2 + rand() * 0.55; setC(s, i, goldish()); s.size[i] = 0.12 + rand() * 0.1; s.alpha[i] = 0.35 + rand() * 0.4; }
-    s.dyn = t => {
-      const gap = 0.16 * R * (1 - sstep(0.4, 1.6, t % 5.5)) + 0.16 * R * sstep(4.4, 5.4, t % 5.5);   // 分開 → 合起來
-      for (let i = 0; i < n; i++) { const d = HALF[i] ? 1 : -1; s.pos[i * 3] = BASE[i * 3] + d * gap * 0.7; s.pos[i * 3 + 1] = BASE[i * 3 + 1] - d * gap * 0.7; }
-      for (let i = n; i < N; i++) {
-        const a = H0[i * 2] + t * 0.25, r = R * H0[i * 2 + 1];
-        s.pos[i * 3] = rect.cx + Math.cos(a) * r; s.pos[i * 3 + 1] = rect.cy + Math.sin(a) * r * 0.9; s.pos[i * 3 + 2] = Math.sin(a * 2) * 2;
+    const nf = N - n, F = new Float32Array(nf * 3);
+    for (let k = 0; k < nf; k++) { F[k * 3] = rand(); F[k * 3 + 1] = rand(); F[k * 3 + 2] = rand(); }
+    const btn = [rect.cx, rect.cy - R * 1.8];
+    s.dyn = (t, p, ta = -1) => {
+      const c = ta >= 0 ? ta : 99;
+      const gap = 0.2 * R * (1 - sstep(0.3, 1.5, c));   // 到的時候兩半從分開慢慢合起來
+      for (let i = 0; i < n; i++) { const d = HALF[i] ? 1 : -1; s.pos[i * 3] = BASE[i * 3] + d * gap * 0.75; s.pos[i * 3 + 1] = BASE[i * 3 + 1] - d * gap * 0.75; }
+      // 粒子流進 LINE 官方按鈕（按鈕在畫面上的位置換成世界座標）
+      const on = endBtn && endBtn.on;
+      const bx = on ? endBtn.x : btn[0], by = on ? endBtn.y : btn[1], bwid = on ? endBtn.w : R;
+      for (let k = 0; k < nf; k++) {
+        const i = n + k, u = (F[k * 3] + t * (0.16 + F[k * 3 + 1] * 0.1)) % 1, side = F[k * 3 + 2] - 0.5;
+        const sx = rect.cx + side * R * 1.4, sy = rect.cy + (F[k * 3 + 1] - 0.5) * R * 1.2;
+        const ex = bx + side * bwid * 0.9, ey = by;
+        const mx = lerp(sx, ex, 0.5) + side * R * 1.2, my = lerp(sy, ey, 0.5) + R * 0.2;
+        const a = 1 - u, x = a * a * sx + 2 * a * u * mx + u * u * ex, y = a * a * sy + 2 * a * u * my + u * u * ey;
+        s.pos[i * 3] = x; s.pos[i * 3 + 1] = y; s.pos[i * 3 + 2] = Math.sin(u * 3.14) * 2 * side;
+        const gr = sstep(0.45, 0.9, u);
+        setC(s, i, mix3(GOLD, LINEG, gr), mix3(GOLD_LT, LINEG_LT, gr));
+        s.size[i] = 0.13 + 0.08 * Math.sin(u * 3.14); s.alpha[i] = on ? 0.85 * bump(u, 0, 1) : 0.25 * bump(u, 0, 0.5);
       }
     };
     s.dyn(0);
-    s.spin = spinOf(rect.cx, rect.cy, 0.55, 0.32, 0);
+    s.spin = spinOf(rect.cx, rect.cy, 0.5, 0.32, 0);
+    s.spinN = n;   // 流向按鈕的粒子不跟著轉
     s.bright = 1.15;
     return finish(s);
   }
 
-  let logoImg = null, textReady = false;
+  let textReady = false;
   function buildAll() {
     seed = 7;
     shapes.nebula = buildCosmos();
     shapes.smiley = buildSmiley();
     shapes.balance = buildBalance();
+    shapes.tf = buildTf();
+    shapes.rocket = buildRocket();
     shapes.breakout = buildBreakout();
     shapes.book = buildBook();
     shapes.ox = buildOx();
     shapes.merge = buildMerge();
     shapes.films = buildFilms();
-    if (logoImg) shapes.logo = buildLogo(logoImg);
-    if (textReady) { shapes.dao = buildDao(); QUOTES.forEach((q, i) => { shapes["q" + i] = buildQuote(q, i); }); }
+    shapes.logo = buildLogo();
+    if (textReady) { shapes.dao = buildDao(); if (STROKES) QUOTES.forEach((q, i) => { shapes["q" + i] = buildPenQuote(q, i); }); }
     buildCandleMeshes();
+    buildIdx();
   }
 
   // ---------- 真的 K 棒（粒子聚好之後浮出來） ----------
@@ -1002,17 +1426,85 @@ function start() {
     lineGeo.attributes.position.needsUpdate = true; lineGeo.attributes.aA.needsUpdate = true;
   }
 
+  const shapeOf = key => shapes[key] || shapes.book;
+  // ---------- 每一段怎麼轉到下一段 ----------
+  // 專長之間（交易→寫書→做工具→做影片→結尾）用大轉場；同一塊裡面用小轉場
+  const TRANS = { smiley: "taiji", balance: "part", dao: "sand", tf: "stretch", rocket: "gather", breakout: "launch", book: "fall", q0: "pen", q1: "pen", q2: "pen", q3: "pen", ox: "vortex", merge: "drop", films: "implode", logo: "implode" };
+  const BIG = { smiley: 1, book: 1, ox: 1, films: 1, logo: 1 };
+  // 形狀接形狀：笑臉的眼睛變成兩個秤盤、嘴巴變成橫樑和柱子、臉的圓圈變成 K 棒
+  const PAIRS = { "smiley>balance": [[1, 1], [2, 2], [3, 3], [3, 4], [0, 0], [4, 0]] };
+  const look = { x: 0, y: 0, on: false };
+  let smileKick = -9, curKey = "nebula", IDX = [];
+  function mapGroups(A, B, pairs) {
+    const map = new Int32Array(N).fill(-1), usedB = new Uint8Array(N);
+    const byX = (S, L) => L.sort((p, q) => S.pos[p * 3] - S.pos[q * 3] || S.pos[p * 3 + 1] - S.pos[q * 3 + 1]);
+    for (const [ga, gb] of pairs) {
+      const LA = [], LB = [];
+      for (let i = 0; i < N; i++) { if (A.grp[i] === ga && map[i] < 0) LA.push(i); if (B.grp[i] === gb && !usedB[i]) LB.push(i); }
+      byX(A, LA); byX(B, LB);
+      const n = Math.min(LA.length, LB.length);
+      for (let k = 0; k < n; k++) { const ia = LA[Math.floor(k * LA.length / n)], ib = LB[Math.floor(k * LB.length / n)]; if (map[ia] < 0 && !usedB[ib]) { map[ia] = ib; usedB[ib] = 1; } }
+    }
+    const RA = Array.prototype.filter.call(A.perm, i => map[i] < 0), RB = Array.prototype.filter.call(B.perm, i => !usedB[i]);
+    for (let k = 0; k < RA.length; k++) map[RA[k]] = RB[k];
+    return map;
+  }
+  // 每一段裡，第 i 顆粒子對應到那個形狀的第幾個點（同一顆粒子一路接下去，不會跳）
+  function buildIdx() {
+    IDX = [];
+    let prev = null, prevS = null;
+    for (let k = 0; k < secs.length; k++) {
+      const S = shapeOf(secs[k].key), cur = new Int32Array(N);
+      if (!prev) cur.set(S.perm);
+      else {
+        const pr = PAIRS[secs[k - 1].key + ">" + secs[k].key];
+        if (pr && prevS.grp && S.grp) { const map = mapGroups(prevS, S, pr); for (let i = 0; i < N; i++) cur[i] = map[prev[i]]; }
+        else { const rank = new Int32Array(N); for (let r = 0; r < N; r++) rank[prevS.perm[r]] = r; for (let i = 0; i < N; i++) cur[i] = S.perm[rank[prev[i]]]; }
+      }
+      IDX.push(cur); prev = cur; prevS = S;
+    }
+  }
+
+  // ---------- 主角旁邊的小標籤 ----------
+  const plEl = document.createElement("div");
+  plEl.id = "plabels"; plEl.setAttribute("aria-hidden", "true");
+  document.body.appendChild(plEl);
+  const lblSpans = new Map(), lo3 = [0, 0, 0], lr3 = [0, 0, 0];
+  function updLabels(A, RA, va, B, RB, vb) {
+    const seen = new Set();
+    const one = (S, R, vis) => {
+      if (!S.labels || vis <= 0.01) return;
+      for (const L of S.labels) {
+        const a = L.f(lo3) * vis;
+        let el = lblSpans.get(L);
+        if (!el) { el = document.createElement("span"); el.className = "pl" + (L.cls ? " " + L.cls : ""); el.textContent = L.t; plEl.appendChild(el); lblSpans.set(L, el); }
+        seen.add(L);
+        let x = lo3[0], y = lo3[1], z = lo3[2];
+        if (R) { const dx = x - R.cx, dy = y - R.cy; const x1 = dx * R.cyw + z * R.syw, z1 = -dx * R.syw + z * R.cyw; x = R.cx + x1; y = R.cy + dy * R.cp - z1 * R.sp; z = dy * R.sp + z1 * R.cp; }
+        const e = PM.elements, w = e[3] * x + e[7] * y + e[11] * z + e[15];
+        if (w <= 0.1) { el.style.opacity = "0"; continue; }
+        const sx = ((e[0] * x + e[4] * y + e[8] * z + e[12]) / w * 0.5 + 0.5) * W, sy = (0.5 - (e[1] * x + e[5] * y + e[9] * z + e[13]) / w * 0.5) * H;
+        el.style.transform = `translate(${sx.toFixed(1)}px, ${sy.toFixed(1)}px)`;
+        el.style.opacity = clamp(a, 0, 1).toFixed(3);
+      }
+    };
+    one(A, RA, va); if (B !== A) one(B, RB, vb);
+    for (const [L, el] of lblSpans) if (!seen.has(L) && el.style.opacity !== "0") el.style.opacity = "0";
+  }
+
   // ---------- 粒子 ----------
   const P = new Float32Array(NP * 3), V = new Float32Array(N * 3);
   const KS = new Float32Array(N), DL = new Float32Array(N), PH = new Float32Array(N), TJ = new Float32Array(N * 2);
   const col = new Float32Array(NP * 3), colD = new Float32Array(NP * 3), size = new Float32Array(NP), alpha = new Float32Array(NP), lightA = new Float32Array(NP).fill(1);
   buildAll();
-  const allText = "道法術選擇不做什麼比做什麼重要是敬畏不是預測像由心生這個人，讓我開始用不同的方式思考世界　";
-  Promise.race([
-    Promise.all([document.fonts.load(`700 150px "Noto Serif TC"`, allText), new Promise(r => { const im = new Image(); im.onload = () => { logoImg = im; r(); }; im.onerror = r; im.src = "media/logo.png"; })]),
+  const allText = "道法術　";
+  Promise.race([   // 道法術的字型、金句的筆順資料都到了再組（最多等 3.5 秒）
+    Promise.all([
+      document.fonts.load(`700 150px "Noto Serif TC"`, allText),
+      fetch("media/strokes.json").then(r => r.json()).then(j => { STROKES = j; }).catch(() => {})
+    ]),
     new Promise(r => setTimeout(r, 3500))
   ]).then(() => { textReady = true; buildAll(); measure(); });
-  const shapeOf = key => shapes[key] || shapes.book;
 
   for (let i = 0; i < N; i++) {   // 開場：從中心爆開，再旋成宇宙
     const a = rand() * 6.283, b = Math.acos(2 * rand() - 1), sp = reduce ? 0 : 0.5 + rand() * 1.4;
@@ -1034,25 +1526,59 @@ function start() {
   const attr = (a, n) => new THREE.BufferAttribute(a, n).setUsage(THREE.DynamicDrawUsage);
   geo.setAttribute("position", attr(P, 3)); geo.setAttribute("aColor", attr(col, 3)); geo.setAttribute("aColorD", attr(colD, 3));
   geo.setAttribute("aSize", attr(size, 1)); geo.setAttribute("aAlpha", attr(alpha, 1)); geo.setAttribute("aLight", new THREE.BufferAttribute(lightA, 1));
+  // 景深：離焦點越遠越大、越淡、越糊；光暈：同一批粒子再畫一次大而淡的光；拖尾：動得快的粒子拉出一條光
+  const pointVS = halo => `attribute vec3 aColor; attribute vec3 aColorD; attribute float aSize; attribute float aAlpha; attribute float aLight;
+      uniform float uScale, uBoost, uMaxPx, uFocus, uDof; varying vec3 vC; varying vec3 vCD; varying float vA; varying float vL; varying float vB;
+      void main(){ vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_Position = projectionMatrix * mv;
+        float bl = clamp(abs(-mv.z - uFocus) * uDof - 0.06, 0.0, 1.0);
+        gl_PointSize = clamp(aSize * uScale / -mv.z * (1.0 + bl * 2.2) * ${halo ? "3.6" : "1.0"}, 1.0, uMaxPx * ${halo ? "2.4" : "1.0"});
+        vC = aColor; vCD = aColorD; vA = aAlpha * uBoost * mix(1.0, 0.32, bl) * ${halo ? "0.1" : "1.0"}; vL = aLight; vB = bl; }`;
   const mat = new THREE.ShaderMaterial({
     transparent: true, depthWrite: false, depthTest: false,
-    uniforms: { ...shared, uScale: { value: 1 }, uBoost: { value: 1 }, uMaxPx: { value: 24 } },
-    vertexShader: `attribute vec3 aColor; attribute vec3 aColorD; attribute float aSize; attribute float aAlpha; attribute float aLight;
-      uniform float uScale, uBoost, uMaxPx; varying vec3 vC; varying vec3 vCD; varying float vA; varying float vL;
-      void main(){ vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_Position = projectionMatrix * mv;
-        gl_PointSize = clamp(aSize * uScale / -mv.z, 1.0, uMaxPx);
-        vC = aColor; vCD = aColorD; vA = aAlpha * uBoost; vL = aLight; }`,
+    uniforms: { ...shared, uScale: { value: 1 }, uBoost: { value: 1 }, uMaxPx: { value: 24 }, uFocus: { value: CAMZ }, uDof: { value: 0.012 } },
+    vertexShader: pointVS(false),
     fragmentShader: `precision highp float;
       ${MASK}
-      varying vec3 vC; varying vec3 vCD; varying float vA; varying float vL;
+      varying vec3 vC; varying vec3 vCD; varying float vA; varying float vL; varying float vB;
       void main(){ float d = length(gl_PointCoord - 0.5); float m = maskAt(gl_FragCoord.xy);
-        float a = (smoothstep(0.5, 0.1, d) + smoothstep(0.5, 0.0, d) * 0.35 * m) * vA * mix(vL, 1.0, m);
+        float core = mix(smoothstep(0.5, 0.1, d), 1.0 - smoothstep(0.0, 0.5, d), vB);
+        float a = (core + smoothstep(0.5, 0.0, d) * 0.35 * m) * vA * mix(vL, 1.0, m);
         if (a < 0.01) discard;
         gl_FragColor = vec4(mix(vC, vCD, m), min(a, 1.0)); }`
   });
   const points = new THREE.Points(geo, mat);
   points.frustumCulled = false; points.renderOrder = 1;
   scene.add(points);
+  const haloMat = new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, depthTest: false,
+    uniforms: mat.uniforms,
+    vertexShader: pointVS(true),
+    fragmentShader: `precision highp float;
+      ${MASK}
+      varying vec3 vC; varying vec3 vCD; varying float vA; varying float vL; varying float vB;
+      void main(){ vec2 q = gl_PointCoord - 0.5; float d2 = dot(q, q); float m = maskAt(gl_FragCoord.xy);
+        float a = exp(-d2 * 16.0) * vA * mix(vL, 1.0, m) * mix(0.5, 1.0, m);
+        if (a < 0.003) discard;
+        gl_FragColor = vec4(mix(vC, vCD, m), a); }`
+  });
+  const haloPts = new THREE.Points(geo, haloMat);
+  haloPts.frustumCulled = false; haloPts.renderOrder = 0;
+  scene.add(haloPts);
+  const TP = new Float32Array(N * 6), TC = new Float32Array(N * 6), TCD = new Float32Array(N * 6), TA = new Float32Array(N * 2);
+  const trailGeo = new THREE.BufferGeometry();
+  trailGeo.setAttribute("position", attr(TP, 3)); trailGeo.setAttribute("aColor", attr(TC, 3)); trailGeo.setAttribute("aColorD", attr(TCD, 3)); trailGeo.setAttribute("aA", attr(TA, 1));
+  const trailMat = new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, depthTest: false,
+    uniforms: { ...shared },
+    vertexShader: `attribute vec3 aColor; attribute vec3 aColorD; attribute float aA; varying vec3 vC; varying vec3 vCD; varying float vA;
+      void main(){ vC = aColor; vCD = aColorD; vA = aA; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+    fragmentShader: `precision highp float; ${MASK} varying vec3 vC; varying vec3 vCD; varying float vA;
+      void main(){ float m = maskAt(gl_FragCoord.xy); if (vA < 0.01) discard; gl_FragColor = vec4(mix(vC, vCD, m), vA); }`
+  });
+  const trails = new THREE.LineSegments(trailGeo, trailMat);
+  trails.frustumCulled = false; trails.renderOrder = 1;
+  scene.add(trails);
+  let fxOn = true;   // 手機跑太慢時關掉光暈和拖尾
 
   const T = { x: new Float32Array(NT), y: new Float32Array(NT), z: new Float32Array(NT), vx: new Float32Array(NT), vy: new Float32Array(NT), vz: new Float32Array(NT), life: new Float32Array(NT), span: new Float32Array(NT).fill(1), big: new Float32Array(NT), hue: new Uint8Array(NT), n: 0 };
   function spark(x, y, z, vx, vy, vz, span, big, hue = 0) { const j = T.n++ % NT; T.x[j] = x; T.y[j] = y; T.z[j] = z; T.vx[j] = vx; T.vy[j] = vy; T.vz[j] = vz; T.life[j] = 1; T.span[j] = span; T.big[j] = big; T.hue[j] = hue; }
@@ -1110,6 +1636,7 @@ function start() {
     const onUi = e.target && e.target.closest && e.target.closest("a, button, .avatar, video");
     if (quick && !onUi && !reduce) {
       tapQ = { x: e.clientX, y: e.clientY, s: 1 };
+      if (curKey === "smiley") smileKick = clock;   // 點笑臉，它笑得更大
       const p = worldAt(e.clientX, e.clientY);
       if (p) for (let k = 0; k < 40; k++) { const a = (k / 40) * 6.283; spark(p.x, p.y, 1, Math.cos(a) * 9, Math.sin(a) * 9, 0, 0.75, 1.3); }
     }
@@ -1123,7 +1650,7 @@ function start() {
     if (!p) return;
     const n = d.n || 1, sp = d.v ?? 6;
     for (let k = 0; k < n; k++) {
-      const a = d.kind === "burst" ? (k / n) * 6.283 + rand() * 0.25 : rand() * 6.283, v = sp * (0.45 + rand() * 0.8);
+      const a = d.a != null ? d.a + (rand() - 0.5) * (d.spread ?? 0.9) : d.kind === "burst" ? (k / n) * 6.283 + rand() * 0.25 : rand() * 6.283, v = sp * (0.45 + rand() * 0.8);
       spark(p.x + (rand() - 0.5) * 0.08, p.y + (rand() - 0.5) * 0.08, 1, Math.cos(a) * v, Math.sin(a) * v + (d.kind === "trail" ? 0.3 : 0), (rand() - 0.5) * v * 0.3, d.life ?? 0.7, d.big ?? 1.1, d.hue || 0);
     }
   });
@@ -1179,10 +1706,12 @@ function start() {
     const T0 = TEXT[key];
     if (ptKey !== key) {
       ptKey = key; ptSince = clock;
-      ptextEl.innerHTML = key === "dao" ? "<span>道</span>　<span>法</span>　<span>術</span>" : T0.lines.join("<br>");
+      ptextEl.innerHTML = T0.svg ? T0.svg : key === "dao" ? "<span>道</span>　<span>法</span>　<span>術</span>" : T0.lines.join("<br>");
+      ptextEl.classList.toggle("svg", !!T0.svg);
     }
     const k = H / Hw;
-    ptextEl.style.fontSize = (T0.fs * T0.sc * k).toFixed(2) + "px";
+    if (T0.svg) { ptextEl.style.width = (T0.w * k).toFixed(1) + "px"; ptextEl.style.height = (T0.h * k).toFixed(1) + "px"; }
+    else { ptextEl.style.width = ptextEl.style.height = ""; ptextEl.style.fontSize = (T0.fs * T0.sc * k).toFixed(2) + "px"; }
     ptextEl.style.left = (W / 2 + T0.rect.cx * k).toFixed(1) + "px";
     ptextEl.style.top = (H / 2 - T0.rect.cy * k).toFixed(1) + "px";
     if (key === "dao" && T0.emph) ptextEl.querySelectorAll("span").forEach((s, i) => { s.style.opacity = (0.25 + 0.75 * T0.emph[i]).toFixed(2); });
@@ -1209,6 +1738,8 @@ function start() {
   const PM = new THREE.Matrix4(), right = new THREE.Vector3(), up = new THREE.Vector3(), tj = [0, 0, 0];
   const bkI = idx("breakout");
   let shake = 0, lastY = scrollY, slowEma = 0.016, slowN = 0;
+  const arrive = {}, lastPair = { a: -1, b: -1, m: 0 }, imp = { key: null, t0: 0, hit: false };
+  let lastHold = null, lastWhoosh = -9, lastAmb = -9;
   const spinCS = s => {
     if (!s.spin) return null;
     const sp = s.spin, yaw = sp.yaw0 + sp.yawA * Math.sin(clock * sp.yawW), cy = Math.cos(yaw), sy = Math.sin(yaw), cp = Math.cos(sp.pitch), spp = Math.sin(sp.pitch);
@@ -1219,6 +1750,7 @@ function start() {
     if (!reduce) clock += dt;
     if (rawDt < 0.25) { slowEma = slowEma * 0.95 + rawDt * 0.05; slowN++; }
     if (slowN > 90 && slowEma > 0.026 && dprCap > 1.2) { dprCap = dprCap > 1.6 ? 1.5 : 1.2; slowN = 0; slowEma = 0.016; resize(false); }
+    if (slowN > 90 && slowEma > 0.028 && dprCap <= 1.2 && fxOn) { fxOn = false; haloPts.visible = trails.visible = false; }   // 還是太慢：關掉光暈和拖尾
     const y = scrollY, dy = y - lastY; lastY = y;
     updateCaps(y);
     const yy = yinYang(y);
@@ -1245,7 +1777,7 @@ function start() {
     bkState.glass = running ? (sT < RUN_T0 ? sstep(0.6, 1.3, sT) : 0) : 0;
     if (sT >= 1.6 && !bseq.sfx) { bseq.sfx = true; braam(0.6, 1); }
     if (sT >= RUN_T0 && !bseq.fl) { bseq.fl = true; flash(0.5); shake = 1.2; shatter(); for (let k = 0; k < 90; k++) { const a = rand() * 6.283, v = 6 + rand() * 10; spark(BG.xb, BG.Y(BK.TOP, 1), 0.5, Math.cos(a) * v, Math.abs(Math.sin(a)) * v + 2, (rand() - 0.5) * 6, 1.1, 1.4); } }
-    if (running) { for (let j = 1; j <= 8; j++) if (sT >= runAt(j) && bseq.hits < j) {
+    if (running) { for (let j = 1; j < BK.RUN; j++) if (sT >= runAt(j) && bseq.hits < j) {
       bseq.hits = j; shake = 0.8; thump(0.55 + j * 0.03); flash(0.22);
       const kk = BK.k[BK.run0 + j - 1], bx = BG.x0 + (BK.run0 + j - 1 + 0.5) * BG.dx, by = BG.Y(kk.c, 1), sp = camFollowH.v * 0.5;
       for (let q = 0; q < 46; q++) { const a = (q / 46) * 6.283, v = sp * (0.8 + rand() * 0.6); spark(bx, by, 0.6, Math.cos(a) * v, Math.sin(a) * v, (rand() - 0.5) * v * 0.4, 0.8, 1.6); }
@@ -1256,6 +1788,7 @@ function start() {
     if (sT > 0.3 && sT < RUN_T0) boost = lerp(1, 0.5, sstep(0.3, RUN_T0 - 0.2, sT));
     else if (sT >= RUN_T0 && sT < RUN_T0 + 0.8) boost = lerp(1.6, 1, sstep(RUN_T0, RUN_T0 + 0.8, sT));
     mat.uniforms.uBoost.value = boost;
+    if (clock - lastAmb > 0.3) { lastAmb = clock; ambient(bkOn ? 0.08 : 0.03); }   // 低音鋪底，突破那段大一點
 
     // ----- 背景、陰陽 -----
     shared.uBase.value = yy.base; shared.uTr.value = yy.tr; shared.uFrom.value = yy.from; shared.uAng.value = taijiAng(yy.tr);
@@ -1263,11 +1796,46 @@ function start() {
     bgMat.uniforms.uTime.value = clock; bgMat.uniforms.uHero.value = 1 - sstep(0.0, 0.5, yy.t1); bgMat.uniforms.uGlow.value = bump(yy.tr, 0, 1) * 0.95;
     const glow = yy.dark > 0.999 && yy.tr === 0 && yy.split < 0.001 && inv === 0;
     const wantBlend = glow ? THREE.AdditiveBlending : THREE.NormalBlending;
-    if (mat.blending !== wantBlend) mat.blending = wantBlend;
+    if (mat.blending !== wantBlend) { mat.blending = wantBlend; haloMat.blending = wantBlend; trailMat.blending = wantBlend; mat.needsUpdate = haloMat.needsUpdate = trailMat.needsUpdate = true; }
 
     const A = shapeOf(SA.key), B = shapeOf(SB.key);
-    if (A.dyn) A.dyn(clock, pA);
-    if (B !== A && B.dyn) B.dyn(clock, pB);
+    // 到站：停在某一段時，主角演一次動作（ta＝到站後幾秒；還沒到過是 -1）
+    const holdKey = st.m === 0 ? SA.key : null;
+    if (holdKey && holdKey !== lastHold) { arrive[holdKey] = clock; lastHold = holdKey; }
+    for (const k in arrive) if (k !== SA.key && k !== SB.key) { delete arrive[k]; if (lastHold === k) lastHold = null; }
+    const taOf = k => arrive[k] != null ? clock - arrive[k] : -1;
+    curKey = st.m < 0.5 ? SA.key : SB.key;
+    // 金句：轉進來一半時光筆開始寫；往回滑就重來
+    for (const k in penState) {
+      const ps = penState[k], inA = SA.key === k, inB = SB.key === k;
+      if (!inA && !inB) { ps.t0 = -1; ps.done = false; continue; }
+      const prog = inA ? 1 : st.m;
+      if (ps.t0 < 0 && prog >= 0.38 && !reduce) ps.t0 = clock;
+      if (reduce && ps.t0 < 0 && prog >= 0.38) ps.t0 = clock - 99;
+      if (!inA && st.m < 0.2 && ps.t0 >= 0) { ps.t0 = -1; ps.done = false; }
+    }
+    if (look.on || now - ptr.at < 2500) { const p = worldAt(ptr.x, ptr.y); look.on = !!p && now - ptr.at < 2500; if (p) { look.x = p.x; look.y = p.y; } }
+    if (A.dyn) A.dyn(clock, pA, taOf(SA.key));
+    if (B !== A && B.dyn) B.dyn(clock, pB, taOf(SB.key));
+    // 這一段轉場用哪一種
+    const tmode = st.m > 0 && st.m < 1 ? (TRANS[SB.key] || "sweep") : null;
+    const samePair = lastPair.a === st.a && lastPair.b === st.b;
+    if (tmode === "implode") {   // 先收再砸：收到 0.42 就自己砸開（跟著時間，不跟著手指）
+      if (imp.key !== SB.key && st.m >= 0.42 && ((samePair && lastPair.m < 0.42) || (lastPair.a === st.a && lastPair.m === 0))) {
+        imp.key = SB.key; imp.t0 = clock; imp.hit = false;
+        braam(0.45, 1);
+      }
+      if (imp.key === SB.key && st.m < 0.38) imp.key = null;
+    } else if (st.m === 0) imp.key = null;
+    const impT = imp.key === SB.key && tmode === "implode" ? clock - imp.t0 : -1;
+    if (impT >= 0.45 && !imp.hit) {
+      imp.hit = true; shake = 1.1;
+      const C = [(A.box.cx + B.box.cx) / 2, (A.box.cy + B.box.cy) / 2];
+      for (let k = 0; k < 120; k++) { const a = rand() * 6.283, v = 8 + rand() * 16; spark(C[0], C[1], 0.8, Math.cos(a) * v, Math.sin(a) * v, (rand() - 0.5) * 8, 1.0, 1.5); }
+    }
+    // 轉場音效：每一段轉過一半輕輕一聲（先收再砸那幾段用 Braam）
+    if (tmode && tmode !== "implode" && samePair && (lastPair.m - 0.5) * (st.m - 0.5) < 0 && clock - lastWhoosh > 0.5) { lastWhoosh = clock; whoosh(BIG[SB.key] ? 0.9 : 0.55); }
+    lastPair.a = st.a; lastPair.b = st.b; lastPair.m = st.m;
 
     // ----- 鏡頭 -----
     camPos.set(0, 0, CAMZ); camLook.set(0, 0, 0);
@@ -1282,11 +1850,17 @@ function start() {
     shake = Math.max(0, shake - dt * 2.4);
     if (shake > 0) { camPos.x += Math.sin(clock * 61) * 0.35 * shake; camPos.y += Math.cos(clock * 53) * 0.3 * shake; }
     camera.position.copy(camPos); camera.lookAt(camLook); camera.updateMatrixWorld();
+    mat.uniforms.uFocus.value = camPos.distanceTo(camLook);   // 景深的焦點對在主角
+    if ((SA.key === "logo" || SB.key === "logo") && endOAEl) {   // 結尾：LINE 官方按鈕在哪裡，粒子就流到哪裡
+      const r = endOAEl.getBoundingClientRect(), c = worldAt(r.left + r.width / 2, r.top + r.height / 2), l = worldAt(r.left + 8, r.top + r.height / 2);
+      endBtn = { on: endCardEl.classList.contains("on") && !!c && !!l, x: c ? c.x : 0, y: c ? c.y : 0, w: c && l ? Math.abs(c.x - l.x) : 1 };
+    }
 
-    // ----- 浮出來的真字 -----
+    // ----- 浮出來的真字（金句要等光筆寫完） -----
     let tk = null, tv = 0;
     if (st.m < 0.5 && A.text) { tk = SA.key; tv = 1 - sstep(0.03, 0.25, st.m); }
     else if (st.m >= 0.5 && B.text) { tk = SB.key; tv = sstep(0.75, 0.97, st.m); }
+    if (tk && penState[tk]) { const ps = penState[tk]; tv *= ps.done ? sstep(0, 0.7, clock - ps.doneAt) : 0; }
     showPText(tk, tv);
     const halo = tk ? 1 - 0.55 * tv * sstep(0.25, 0.9, clock - ptSince) : 1;
 
@@ -1300,29 +1874,110 @@ function start() {
     const k60 = dt * 60, damp = Math.pow(0.86, k60);
     const m = st.m, swirl = phone ? 0.6 : 0.9;
     const hA = A.text && tk === SA.key ? halo : 1, hB = B.text && tk === SB.key ? halo : 1;
-    const Ap = A.perm, Bp = B.perm, sA = A.stiff || 1, sB = B.stiff || 1;
+    const IA = IDX[st.a] || A.perm, IB = IDX[st.b] || B.perm, sA = A.stiff || 1, sB = B.stiff || 1;
     const RA = spinCS(A), RB = spinCS(B), brA = A.bright || 1, brB = B.bright || 1;
     const tjW = yy.tr > 0 ? sstep(0.04, 0.28, yy.tr) * (1 - sstep(0.5, 0.78, yy.tr)) : 0;   // 轉場時粒子先繞太極
-    const rot = (R, pos, j, o) => {
+    const rot = (R, pos, j, o, spun = true) => {
       let x = pos[j], y = pos[j + 1], z = pos[j + 2];
-      if (R) { const dx = x - R.cx, dy2 = y - R.cy; const x1 = dx * R.cyw + z * R.syw, z1 = -dx * R.syw + z * R.cyw; const y1 = dy2 * R.cp - z1 * R.sp, z2 = dy2 * R.sp + z1 * R.cp; x = R.cx + x1; y = R.cy + y1; z = z2; }
+      if (R && spun) { const dx = x - R.cx, dy2 = y - R.cy; const x1 = dx * R.cyw + z * R.syw, z1 = -dx * R.syw + z * R.cyw; const y1 = dy2 * R.cp - z1 * R.sp, z2 = dy2 * R.sp + z1 * R.cp; x = R.cx + x1; y = R.cy + y1; z = z2; }
       o[0] = x; o[1] = y; o[2] = z;
     };
+    // 轉場要用到的中心點
+    const Cx = (A.box.cx + B.box.cx) / 2, Cy = (A.box.cy + B.box.cy) / 2;
+    const Bh = Math.max(1e-3, B.box.y1 - B.box.y0), skyY = Hw * 0.62;
+    const gC = tmode === "gather" ? (B.rocketHead ? B.rocketHead() : [B.box.cx, B.box.cy]) : null;
+    const pivY = A.candles ? BG.yb : A.box.y0;
+    const impSq = impT >= 0 ? (impT < 0.45 ? 1 : 1 - sstep(0.45, 0.7, impT)) : (tmode === "implode" ? sstep(0.25, 0.42, m) : 0);   // 收成一點時粒子變亮
     const oa = [0, 0, 0], ob = [0, 0, 0];
     for (let i = 0; i < N; i++) {
-      const i3 = i * 3, ja1 = Ap[i], jb1 = Bp[i], ja = ja1 * 3, jb = jb1 * 3;
+      const i3 = i * 3, ja1 = IA[i], jb1 = IB[i], ja = ja1 * 3, jb = jb1 * 3;
       let mi = m;
       if (m > 0 && m < 1) mi = sstep(0, 1, clamp((m - DL[i] * 0.4) / 0.6, 0, 1));
-      const ia = 1 - mi;
-      rot(RA, A.pos, ja, oa); rot(RB, B.pos, jb, ob);
-      let tx = oa[0] * ia + ob[0] * mi, ty = oa[1] * ia + ob[1] * mi, tz = oa[2] * ia + ob[2] * mi;
+      let ia = 1 - mi;
+      rot(RA, A.pos, ja, oa, ja1 < (A.spinN ?? N)); rot(RB, B.pos, jb, ob, jb1 < (B.spinN ?? N));
+      let tx, ty, tz, aMul = 1, sMul = 1, swOn = 1;
+      switch (tmode) {
+        case "implode": {
+          swOn = 0;
+          const ph = PH[i];
+          if (impT >= 0) {
+            if (impT < 0.45) { const j = 0.25 + 0.15 * Math.sin(clock * 30 + ph * 5); tx = Cx + Math.cos(ph) * j; ty = Cy + Math.sin(ph * 1.7) * j; tz = Math.sin(ph * 2.3) * j; mi = 0.5; }
+            else { const bt = easeOutBack((impT - 0.45) / 0.9); tx = Cx + (ob[0] - Cx) * bt; ty = Cy + (ob[1] - Cy) * bt; tz = ob[2] * bt; mi = clamp((impT - 0.45) / 0.5, 0, 1); }
+          } else if (m < 0.42) {
+            const c = Math.pow(sstep(0, 0.42, m), 1.4), ang = c * 2.6 + ph * 0.1, rx = (oa[0] - Cx) * (1 - c), ry = (oa[1] - Cy) * (1 - c), ca = Math.cos(ang), sa = Math.sin(ang);
+            tx = Cx + rx * ca - ry * sa; ty = Cy + rx * sa + ry * ca; tz = oa[2] * (1 - c); mi = 0;
+          } else { tx = ob[0]; ty = ob[1]; tz = ob[2]; mi = 1; }
+          ia = 1 - mi; sMul = 1 + 0.5 * impSq;
+          break;
+        }
+        case "sand": {   // 先被吹上天，再從下面一層一層落下來堆成字
+          swOn = 0;
+          const ky = clamp((ob[1] - B.box.y0) / Bh, 0, 1), sT = 0.34 + ky * 0.4, rise = sstep(0, 0.3, m), fall = clamp((m - sT) / 0.24, 0, 1);
+          const sx = ob[0] + Math.sin(PH[i] * 3) * 0.9, sy = skyY + (PH[i] / 6.283) * Hw * 0.18;
+          if (fall <= 0) { tx = lerp(oa[0], sx, rise); ty = lerp(oa[1], sy, rise); tz = lerp(oa[2], ob[2], rise); mi = rise * 0.5; }
+          else { tx = lerp(sx, ob[0], fall); ty = lerp(sy, ob[1], fall * fall); tz = ob[2]; mi = 0.5 + fall * 0.5; }
+          ia = 1 - mi;
+          break;
+        }
+        case "stretch": {   // 筆畫先壓成一條條橫線，再拉開成三層 K 線
+          const mx = sstep(0, 1, clamp((m - DL[i] * 0.35) / 0.65, 0, 1)), my = sstep(0, 1, clamp(m * 1.7, 0, 1));
+          tx = lerp(oa[0], ob[0], mx); ty = lerp(oa[1], ob[1], my); tz = lerp(oa[2], ob[2], mx);
+          break;
+        }
+        case "gather": {   // 三層 K 線收進火箭裡，再散開成火箭模型
+          const sph = 1.4 * (0.4 + 0.6 * (PH[i] / 6.283));
+          const gx = gC[0] + Math.cos(PH[i]) * sph, gy = gC[1] + Math.sin(PH[i] * 1.3) * sph;
+          if (m < 0.5) { const u = sstep(0, 0.5, m); tx = lerp(oa[0], gx, u); ty = lerp(oa[1], gy, u); tz = oa[2] * (1 - u); }
+          else { const u = sstep(0.5, 1, m); tx = lerp(gx, ob[0], u); ty = lerp(gy, ob[1], u); tz = ob[2] * u; }
+          swOn = 0.4;
+          break;
+        }
+        case "launch": {   // 火箭往上飛走，太極轉成陰，再拉成 K 線
+          const up2 = Math.pow(sstep(0, 0.2, m), 2) * Hw * 1.3;
+          tx = lerp(oa[0], ob[0], mi); ty = lerp(oa[1] + up2, ob[1], mi); tz = lerp(oa[2], ob[2], mi);
+          break;
+        }
+        case "fall": {   // K 棒像骨牌一根根往右倒，倒下去變成書頁
+          swOn = 0;
+          const u = clamp((m - DL[i] * 0.3) / 0.7, 0, 1), th = -Math.PI / 2 * sstep(0, 0.5, u), ct = Math.cos(th), stt = Math.sin(th);
+          const rx = 0, ry = oa[1] - pivY;
+          const fx = oa[0] + rx * ct - ry * stt, fy = pivY + rx * stt + ry * ct;
+          const w = sstep(0.45, 1, u);
+          tx = lerp(fx, ob[0], w); ty = lerp(fy, ob[1], w); tz = lerp(oa[2], ob[2], w); mi = w; ia = 1 - mi;
+          break;
+        }
+        case "pen": {   // 舊的字往上飄散，粒子收進筆尖，光筆把新的字寫出來
+          swOn = 0;
+          const fl = sstep(0, 0.4, m), w = sstep(0.3, 0.5, m);
+          const dxo = oa[0] - A.box.cx, dyo = oa[1] - A.box.cy, dl = Math.hypot(dxo, dyo) || 1;
+          const fx = oa[0] + (A.pen ? Math.sin(PH[i] * 2) * 0.8 : dxo / dl * Hw * 0.5) * fl, fy = oa[1] + (A.pen ? Hw * 0.5 : dyo / dl * Hw * 0.5 + Hw * 0.2) * fl;
+          tx = lerp(fx, ob[0], w); ty = lerp(fy, ob[1], w); tz = lerp(oa[2], ob[2], w);
+          mi = w; ia = 1 - mi; aMul = 1;
+          if (w < 1) aMul = lerp(1 - sstep(0.05, 0.38, m), 1, w);
+          break;
+        }
+        case "vortex": {   // 捲成漩渦，捲進雷達
+          const ang = Math.sin(Math.PI * m) * (4.5 + PH[i] * 0.25), shrink = 1 - 0.55 * Math.sin(Math.PI * m);
+          const px0 = lerp(oa[0], ob[0], mi) - Cx, py0 = lerp(oa[1], ob[1], mi) - Cy, ca = Math.cos(ang), sa = Math.sin(ang);
+          tx = Cx + (px0 * ca - py0 * sa) * shrink; ty = Cy + (px0 * sa + py0 * ca) * shrink; tz = lerp(oa[2], ob[2], mi) + Math.sin(Math.PI * m) * Math.sin(PH[i]) * 3;
+          swOn = 0;
+          break;
+        }
+        case "drop": {   // 雷達上的光點往下掉，彈幾下變成合成球
+          tx = lerp(oa[0], ob[0], sstep(0, 1, mi)); ty = ob[1] < oa[1] ? lerp(oa[1], ob[1], easeOutBounce(mi)) : lerp(oa[1], ob[1], mi); tz = lerp(oa[2], ob[2], mi);
+          swOn = 0.3;
+          break;
+        }
+        default:
+          tx = oa[0] * ia + ob[0] * mi; ty = oa[1] * ia + ob[1] * mi; tz = oa[2] * ia + ob[2] * mi;
+      }
       if (tjW > 0.001) { taijiPoint(i, yy.tr, yy.from, tj); tx = lerp(tx, tj[0], tjW); ty = lerp(ty, tj[1], tjW); tz = lerp(tz, tj[2], tjW); }
-      const sw = Math.sin(Math.PI * mi) * swirl * (1 - tjW);
+      const sw = Math.sin(Math.PI * mi) * swirl * (1 - tjW) * swOn;
       if (sw > 0.01) { tx += Math.cos(PH[i] + clock * 0.9) * sw; ty += Math.sin(PH[i] * 1.3 + clock * 0.7) * sw; tz += Math.sin(PH[i] * 0.7 + clock) * sw; }
       if (!A.text || mi > 0.5) { tx += Math.sin(clock * 0.6 + PH[i]) * 0.04; ty += Math.cos(clock * 0.5 + PH[i] * 1.7) * 0.04; }
       let vx = V[i3], vy = V[i3 + 1], vz = V[i3 + 2];
       const px = P[i3], py = P[i3 + 1], pz = P[i3 + 2];
-      const kk = KS[i] * k60 * (sA * ia + sB * mi) * (1 + tjW);
+      const kk = KS[i] * k60 * (sA * ia + sB * mi) * (1 + tjW) * (impT >= 0.45 && impT < 1.4 ? 1.8 : 1);
       vx = vx * damp + (tx - px) * kk; vy = vy * damp + (ty - py) * kk; vz = vz * damp + (tz - pz) * kk;
       if (active) {
         const ww = e[3] * px + e[7] * py + e[11] * pz + e[15];
@@ -1347,19 +2002,32 @@ function start() {
       }
       V[i3] = vx; V[i3 + 1] = vy; V[i3 + 2] = vz;
       P[i3] = px + vx * k60; P[i3 + 1] = py + vy * k60; P[i3 + 2] = pz + vz * k60;
-      if (tjW > 0.3) {   // 繞太極時是金色
-        const g = (tjW - 0.3) / 0.7;
-        col[i3] = lerp(A.col[ja] * ia + B.col[jb] * mi, GOLD[0], g); col[i3 + 1] = lerp(A.col[ja + 1] * ia + B.col[jb + 1] * mi, GOLD[1], g); col[i3 + 2] = lerp(A.col[ja + 2] * ia + B.col[jb + 2] * mi, GOLD[2], g);
-        colD[i3] = lerp(A.colD[ja] * ia + B.colD[jb] * mi, GOLD_LT[0], g); colD[i3 + 1] = lerp(A.colD[ja + 1] * ia + B.colD[jb + 1] * mi, GOLD_LT[1], g); colD[i3 + 2] = lerp(A.colD[ja + 2] * ia + B.colD[jb + 2] * mi, GOLD_LT[2], g);
-      } else {
-        col[i3] = A.col[ja] * ia + B.col[jb] * mi; col[i3 + 1] = A.col[ja + 1] * ia + B.col[jb + 1] * mi; col[i3 + 2] = A.col[ja + 2] * ia + B.col[jb + 2] * mi;
-        colD[i3] = A.colD[ja] * ia + B.colD[jb] * mi; colD[i3 + 1] = A.colD[ja + 1] * ia + B.colD[jb + 1] * mi; colD[i3 + 2] = A.colD[ja + 2] * ia + B.colD[jb + 2] * mi;
-      }
+      const g = tjW > 0.3 ? (tjW - 0.3) / 0.7 : impSq * 0.6;   // 繞太極、收成一點時偏金色
+      col[i3] = lerp(A.col[ja] * ia + B.col[jb] * mi, GOLD[0], g); col[i3 + 1] = lerp(A.col[ja + 1] * ia + B.col[jb + 1] * mi, GOLD[1], g); col[i3 + 2] = lerp(A.col[ja + 2] * ia + B.col[jb + 2] * mi, GOLD[2], g);
+      colD[i3] = lerp(A.colD[ja] * ia + B.colD[jb] * mi, GOLD_LT[0], g); colD[i3 + 1] = lerp(A.colD[ja + 1] * ia + B.colD[jb + 1] * mi, GOLD_LT[1], g); colD[i3 + 2] = lerp(A.colD[ja + 2] * ia + B.colD[jb + 2] * mi, GOLD_LT[2], g);
       const tw = 0.86 + 0.14 * Math.sin(clock * 2 + PH[i] * 3);
-      size[i] = (A.size[ja1] * ia * brA + B.size[jb1] * mi * brB) * tw * (1 + tjW * 0.3);
-      alpha[i] = Math.max(A.alpha[ja1] * ia * hA + B.alpha[jb1] * mi * hB, tjW * 0.9);
+      size[i] = (A.size[ja1] * ia * brA + B.size[jb1] * mi * brB) * tw * (1 + tjW * 0.3) * sMul;
+      alpha[i] = Math.max((A.alpha[ja1] * ia * hA + B.alpha[jb1] * mi * hB) * aMul, tjW * 0.9, impSq * 0.8);
     }
     tapQ = null;
+    // 拖尾：動得快的粒子後面拉一條光
+    if (fxOn) {
+      for (let i = 0; i < N; i++) {
+        const i3 = i * 3, i6 = i * 6, vx = V[i3], vy = V[i3 + 1], vz = V[i3 + 2], sp = Math.sqrt(vx * vx + vy * vy + vz * vz);
+        const a = clamp(sp * 5 - 0.05, 0, 1) * alpha[i] * 0.6;
+        TA[i * 2] = a; TA[i * 2 + 1] = 0;
+        if (a <= 0) { TP[i6] = TP[i6 + 3] = P[i3]; TP[i6 + 1] = TP[i6 + 4] = P[i3 + 1]; TP[i6 + 2] = TP[i6 + 5] = P[i3 + 2]; continue; }
+        TP[i6] = P[i3]; TP[i6 + 1] = P[i3 + 1]; TP[i6 + 2] = P[i3 + 2];
+        TP[i6 + 3] = P[i3] - vx * 7; TP[i6 + 4] = P[i3 + 1] - vy * 7; TP[i6 + 5] = P[i3 + 2] - vz * 7;
+        TC[i6] = TC[i6 + 3] = col[i3]; TC[i6 + 1] = TC[i6 + 4] = col[i3 + 1]; TC[i6 + 2] = TC[i6 + 5] = col[i3 + 2];
+        TCD[i6] = TCD[i6 + 3] = colD[i3]; TCD[i6 + 1] = TCD[i6 + 4] = colD[i3 + 1]; TCD[i6 + 2] = TCD[i6 + 5] = colD[i3 + 2];
+      }
+      for (const k of ["position", "aColor", "aColorD", "aA"]) trailGeo.attributes[k].needsUpdate = true;
+    }
+    // 筆尖一路噴小火花
+    for (const S of [A, B]) if (S.pen && S._tip && !reduce) { const tp = S._tip; for (let q = 0; q < 2; q++) spark(tp[0], tp[1], 1, (rand() - 0.5) * 1.5, (rand() - 0.2) * 1.5, 0, 0.5, 0.9); }
+    // 主角旁邊的小標籤（多方、空方、燃料、慣性、牆、日週月……）
+    updLabels(A, RA, 1 - sstep(0, 0.25, m), B, RB, sstep(0.75, 1, m));
 
     // ----- 真 K 棒、玻璃、碎片、速度線 -----
     const solidShow = bkOn ? (st.a === bkI ? 1 - st.m : st.m) : 0;
@@ -1374,7 +2042,7 @@ function start() {
     const riseA = running ? sstep(RUN_T0 + 0.3, RUN_T0 + 0.9, sT) * (1 - sstep(RUN_END, RUN_END + 0.5, sT)) : 0;
     aura.visible = false;
     if (running && sT >= RUN_T0 && sT < RUN_END + 0.6) {
-      const rt = sT - RUN_T0, j = clamp(Math.floor(rt / RUN_DT), 0, 8), kk = BK.k[BK.run0 + j];
+      const rt = sT - RUN_T0, j = clamp(Math.floor(rt / RUN_DT), 0, BK.RUN - 1), kk = BK.k[BK.run0 + j];
       const v = clamp((rt - j * RUN_DT) / RUN_GROW, 0, 1), xc = BG.x0 + (BK.run0 + j + 0.5) * BG.dx;
       const y0 = BG.Y(kk.o, 1), y1 = BG.Y(kk.o + (kk.c - kk.o) * Math.max(v, 0.02), 1), w = BG.bw * 1.9;
       aura.visible = true;
