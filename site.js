@@ -125,6 +125,20 @@ function thump(level = 0.6) {   // 往上衝時每一段的短重擊
   const ng = actx.createGain(); ng.gain.setValueAtTime(0.35, t); ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.18);
   n.connect(nl); nl.connect(ng); ng.connect(master); n.start(t);
 }
+function tick(strong) {   // 按鈕的觸感音：短短喀一聲，官方按鈕多一點低音
+  if (!soundOn || !actx || actx.state !== "running") return;
+  const t = actx.currentTime + 0.005, out = actx.createGain(); out.gain.value = strong ? 0.42 : 0.3; out.connect(actx.destination);
+  const o = actx.createOscillator(); o.type = "sine";
+  o.frequency.setValueAtTime(strong ? 700 : 940, t); o.frequency.exponentialRampToValueAtTime(strong ? 360 : 560, t + 0.07);
+  const g = actx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.6, t + 0.004); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.12);
+  o.connect(g); g.connect(out); o.start(t); o.stop(t + 0.14);
+  if (strong) {
+    const s = actx.createOscillator(); s.type = "sine"; s.frequency.setValueAtTime(110, t); s.frequency.exponentialRampToValueAtTime(55, t + 0.18);
+    const sg = actx.createGain(); sg.gain.setValueAtTime(0.0001, t); sg.gain.exponentialRampToValueAtTime(0.7, t + 0.008); sg.gain.exponentialRampToValueAtTime(0.0001, t + 0.24);
+    s.connect(sg); sg.connect(out); s.start(t); s.stop(t + 0.26);
+  }
+}
+addEventListener("sn:tick", e => setTimeout(() => tick(e.detail && e.detail.strong), 15));
 function flash(strength = 1) {
   if (!flashEl || reduce) return;
   flashEl.style.transition = "none"; flashEl.style.opacity = String(0.9 * strength);
@@ -296,7 +310,8 @@ function start() {
     Hw = 2 * CAMZ * Math.tan(THREE.MathUtils.degToRad(FOV / 2)); Ww = Hw * (W / H);
     STAGE = phone ? { cx: 0, cy: Hw * 0.19, hw: Ww * 0.47, hh: Hw * 0.27 } : { cx: Ww * 0.21, cy: Hw * 0.0, hw: Math.min(Ww * 0.27, Hw * 0.52), hh: Hw * 0.42 };
     CHART = phone ? { cx: 0, cy: Hw * 0.19, hw: Ww * 0.48, hh: Hw * 0.25 } : { cx: Ww * 0.14, cy: Hw * 0.02, hw: Ww * 0.33, hh: Hw * 0.38 };
-    HERO = phone ? { cx: 0, cy: Hw * 0.365, r: Ww * 1.2 } : { cx: 0, cy: Hw * 0.36, r: Hw * 0.9 };
+    const avEl = document.querySelector(".avatar"), avY = avEl ? avEl.offsetTop + avEl.offsetHeight / 2 : H * 0.135;   // 星系的核心放在頭像正後面
+    HERO = phone ? { cx: 0, cy: (H / 2 - avY) * Hw / H, r: Ww * 1.2 } : { cx: 0, cy: (H / 2 - avY) * Hw / H, r: Hw * 0.9 };
     QUOTE = phone ? { cx: 0, cy: Hw * 0.1, hw: Ww * 0.46, hh: Hw * 0.3 } : { cx: 0, cy: Hw * 0.06, hw: Ww * 0.38, hh: Hw * 0.3 };
     TOPC = phone ? STAGE : { cx: 0, cy: Hw * 0.3, hw: Ww * 0.17, hh: Hw * 0.15 };
   }
@@ -1039,8 +1054,8 @@ function start() {
   points.frustumCulled = false; points.renderOrder = 1;
   scene.add(points);
 
-  const T = { x: new Float32Array(NT), y: new Float32Array(NT), z: new Float32Array(NT), vx: new Float32Array(NT), vy: new Float32Array(NT), vz: new Float32Array(NT), life: new Float32Array(NT), span: new Float32Array(NT).fill(1), big: new Float32Array(NT), n: 0 };
-  function spark(x, y, z, vx, vy, vz, span, big) { const j = T.n++ % NT; T.x[j] = x; T.y[j] = y; T.z[j] = z; T.vx[j] = vx; T.vy[j] = vy; T.vz[j] = vz; T.life[j] = 1; T.span[j] = span; T.big[j] = big; }
+  const T = { x: new Float32Array(NT), y: new Float32Array(NT), z: new Float32Array(NT), vx: new Float32Array(NT), vy: new Float32Array(NT), vz: new Float32Array(NT), life: new Float32Array(NT), span: new Float32Array(NT).fill(1), big: new Float32Array(NT), hue: new Uint8Array(NT), n: 0 };
+  function spark(x, y, z, vx, vy, vz, span, big, hue = 0) { const j = T.n++ % NT; T.x[j] = x; T.y[j] = y; T.z[j] = z; T.vx[j] = vx; T.vy[j] = vy; T.vz[j] = vz; T.life[j] = 1; T.span[j] = span; T.big[j] = big; T.hue[j] = hue; }
 
   // ---------- 尺寸 ----------
   let dpr = 1, dprCap = 2;
@@ -1101,6 +1116,17 @@ function start() {
     ptr.down = false; ptr.holdOn = false;
   }, { passive: true });
   addEventListener("pointercancel", () => { ptr.down = false; ptr.holdOn = false; }, { passive: true });
+  // 按鈕那邊（ui.js）要粒子：描邊的光點、按下去噴出來
+  addEventListener("sn:spark", ev => {
+    if (reduce) return;
+    const d = ev.detail || {}, p = worldAt(d.x, d.y);
+    if (!p) return;
+    const n = d.n || 1, sp = d.v ?? 6;
+    for (let k = 0; k < n; k++) {
+      const a = d.kind === "burst" ? (k / n) * 6.283 + rand() * 0.25 : rand() * 6.283, v = sp * (0.45 + rand() * 0.8);
+      spark(p.x + (rand() - 0.5) * 0.08, p.y + (rand() - 0.5) * 0.08, 1, Math.cos(a) * v, Math.sin(a) * v + (d.kind === "trail" ? 0.3 : 0), (rand() - 0.5) * v * 0.3, d.life ?? 0.7, d.big ?? 1.1, d.hue || 0);
+    }
+  });
   const av = document.querySelector(".avatar");
   const avatarBurst = () => {
     unlockAudio();
@@ -1390,8 +1416,13 @@ function start() {
       }
       const lf = T.life[j];
       P[p3] = T.x[j]; P[p3 + 1] = T.y[j]; P[p3 + 2] = T.z[j];
-      col[p3] = 0.9; col[p3 + 1] = lerp(0.62, 0.78, lf); col[p3 + 2] = lerp(0.24, 0.42, lf);
-      colD[p3] = 0.98; colD[p3 + 1] = lerp(0.72, 0.9, lf); colD[p3 + 2] = lerp(0.35, 0.6, lf);
+      if (T.hue[j] === 1) {   // 流進 LINE 的綠色
+        col[p3] = lerp(0.1, 0.45, lf); col[p3 + 1] = 0.78; col[p3 + 2] = lerp(0.3, 0.5, lf);
+        colD[p3] = lerp(0.2, 0.62, lf); colD[p3 + 1] = 0.95; colD[p3 + 2] = lerp(0.45, 0.66, lf);
+      } else {
+        col[p3] = 0.9; col[p3 + 1] = lerp(0.62, 0.78, lf); col[p3 + 2] = lerp(0.24, 0.42, lf);
+        colD[p3] = 0.98; colD[p3 + 1] = lerp(0.72, 0.9, lf); colD[p3 + 2] = lerp(0.35, 0.6, lf);
+      }
       size[p] = (0.3 * lf + 0.06) * T.big[j];
       alpha[p] = Math.pow(lf, 1.3);
     }
@@ -1403,4 +1434,5 @@ function start() {
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
+  dispatchEvent(new Event("sn:ready"));
 }
