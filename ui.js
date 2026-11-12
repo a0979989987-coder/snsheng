@@ -35,8 +35,7 @@
     const svg = document.createElementNS(NS, "svg");
     svg.setAttribute("class", "edge"); svg.setAttribute("aria-hidden", "true");
     const tr = document.createElementNS(NS, "rect"); tr.setAttribute("class", "trace"); svg.appendChild(tr);
-    let rn = null;
-    if (el.classList.contains("oa")) { rn = document.createElementNS(NS, "rect"); rn.setAttribute("class", "run"); svg.appendChild(rn); }
+    const rn = null;   // 原本官方按鈕的跑光拿掉了（他說看起來廉價）
     el.appendChild(svg);
     const E = { el, svg, tr, rn, P: 1, w: 1, h: 1, r: 0, anim: null };
     edges.push(E);

@@ -111,17 +111,31 @@
   .lbtn .face b { font-weight: 500; letter-spacing: 1px; white-space: nowrap; }
   .lbtn .face .ic { flex: none; }
   .lbtn .inv { -webkit-clip-path: inset(0 100% 0 0); clip-path: inset(0 100% 0 0); }
-  .lbtn.oa { height: 62px; }
-  .lbtn.oa .face { background: linear-gradient(180deg, #14d468, #05b84e); color: #fff; font-size: 17px; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .35); }
-  .lbtn.oa .face .ic { width: 28px; height: 28px; }
-  .lbtn.oa .inv { background: #f7f3e8; color: #1b1f27; }
-  .lbtn.oa .inv .ic { color: #06C755; }
-  .lbtn.oa::before {
-    content: ""; position: absolute; inset: 1px; border-radius: 17px; pointer-events: none; opacity: 0;
-    box-shadow: 0 0 22px 2px rgba(6, 199, 85, .55), 0 0 60px 10px rgba(6, 199, 85, .26);
+  /* LINE 官方：立體的綠、光澤偶爾掃過一次、右邊小箭頭輕輕推一下、底下一圈慢慢呼吸的綠光 */
+  .lbtn.oa { height: 64px; }
+  .lbtn.oa .face {
+    background: linear-gradient(180deg, #2be07f 0%, #08c957 48%, #03a948 100%); color: #fff; font-size: 17px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .55), inset 0 -3px 8px rgba(0, 70, 25, .3), inset 0 0 0 1px rgba(255, 255, 255, .12);
+    text-shadow: 0 1px 2px rgba(0, 70, 25, .35);
   }
-  .lbtn.oa.lit::before { animation: breathe 3.4s ease-in-out infinite; }
-  @keyframes breathe { 0%, 100% { opacity: .5; } 50% { opacity: 1; } }
+  .lbtn.oa .face:not(.inv) { overflow: hidden; }
+  .lbtn.oa .face:not(.inv)::after {
+    content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: 40%; pointer-events: none;
+    background: linear-gradient(105deg, rgba(255, 255, 255, 0) 15%, rgba(255, 255, 255, .45) 50%, rgba(255, 255, 255, 0) 85%);
+    transform: translateX(-130%); animation: sheen 4.8s cubic-bezier(.45, 0, .2, 1) 1.6s infinite;
+  }
+  @keyframes sheen { 0% { transform: translateX(-130%); } 24%, 100% { transform: translateX(270%); } }
+  .lbtn.oa .face .ic { width: 28px; height: 28px; filter: drop-shadow(0 1px 1px rgba(0, 70, 25, .3)); }
+  .lbtn.oa .chev { position: absolute; right: 16px; top: 50%; width: 18px; height: 18px; margin-top: -9px; fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; opacity: .92; animation: nudge 2.4s ease-in-out infinite; }
+  @keyframes nudge { 0%, 55%, 100% { transform: translateX(0); } 70% { transform: translateX(4px); } 85% { transform: translateX(0); } }
+  .lbtn.oa .inv { background: #f7f3e8; color: #1b1f27; text-shadow: none; }
+  .lbtn.oa .inv .ic { color: #06C755; filter: none; }
+  .lbtn.oa::before {
+    content: ""; position: absolute; inset: 8px 12px 4px; border-radius: 16px; pointer-events: none; opacity: 0;
+    box-shadow: 0 10px 30px rgba(6, 199, 85, .55), 0 0 44px rgba(6, 199, 85, .3);
+  }
+  .lbtn.oa.lit::before { animation: breathe 3.6s ease-in-out infinite; }
+  @keyframes breathe { 0%, 100% { opacity: .55; } 50% { opacity: 1; } }
   .lbtn.grp { height: 48px; margin-top: 10px; }
   .lbtn.grp .face { background: var(--card); border: 1px solid var(--cardline); color: var(--fg); font-size: 15px; -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
   .lbtn.grp .face .ic { width: 22px; height: 22px; color: #06C755; }
@@ -175,8 +189,6 @@
   .edge { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; filter: drop-shadow(0 0 3px rgba(255, 216, 140, .95)); }
   .edge rect { fill: none; }
   .edge .trace { stroke: #ffe6b0; stroke-width: 1.6; stroke-linecap: round; opacity: 0; }
-  .edge .run { stroke: #ffe1a0; stroke-width: 2.2; stroke-linecap: round; opacity: 0; transition: opacity .8s; }
-  .lit > .edge .run { opacity: 1; }
   /* 按下去：先壓扁，放開 Q 彈回來 */
   .press { transform: scale(1.035, .9); transition: transform .09s ease-out; }
   .jelly { animation: jelly .6s linear; }
@@ -195,6 +207,8 @@
     transition: transform .45s cubic-bezier(.2, .9, .25, 1.25), opacity .3s;
   }
   .lpill .ic { width: 24px; height: 24px; }
+  .lpill { overflow: hidden; background: linear-gradient(180deg, #2be07f 0%, #08c957 50%, #03a948 100%); box-shadow: 0 8px 24px rgba(0, 0, 0, .28), 0 0 22px rgba(6, 199, 85, .45), inset 0 1px 0 rgba(255, 255, 255, .5); }
+  .lpill::after { content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: 40%; pointer-events: none; background: linear-gradient(105deg, rgba(255, 255, 255, 0) 15%, rgba(255, 255, 255, .42) 50%, rgba(255, 255, 255, 0) 85%); transform: translateX(-130%); animation: sheen 4.8s cubic-bezier(.45, 0, .2, 1) 2.4s infinite; }
   .lpill.on { transform: translate(-50%, 0); opacity: 1; pointer-events: auto; }
   .lpill.on.press { transform: translate(-50%, 0) scale(1.04, .9); }
   .lpill.on.jelly { animation: pjelly .6s linear; }
@@ -368,8 +382,26 @@
     .qrnote { display: block; }
     .prog { right: 14px; }
   }
+  /* 手機：卡片收小一點，上面留給主角 */
+  @media (max-width: 760px) {
+    .phone { width: min(25vw, 11.5svh, 118px); }
+    #ox .phone { width: min(22vw, 10svh, 104px); }
+    #merge .copy { display: grid; grid-template-columns: 1fr auto; column-gap: 14px; align-items: start; }
+    #merge .copy > :not(.phones) { grid-column: 1; }
+    #merge .copy > .phones { grid-column: 2; grid-row: 1 / span 3; margin-top: 0; }
+    .film { aspect-ratio: 3 / 4; }
+    #films .copy h2 { font-size: 21px; margin-bottom: 6px; }
+  }
+  @media (max-width: 760px) and (max-height: 720px) {
+    .js .pin > .copy { padding: 16px 18px 18px; }
+    .copy h2 { font-size: 22px; margin-bottom: 6px; }
+    .copy p { font-size: 14px; line-height: 1.7; }
+    .kicker { margin-bottom: 4px; }
+    .phones { margin-top: 10px; }
+    .wall { margin-top: 8px; }
+  }
   @media (prefers-reduced-motion: reduce) {
-    .avatar .ring, .scrollhint svg, .mini *, .lbtn.oa.lit::before { animation: none !important; }
+    .avatar .ring, .scrollhint svg, .mini *, .lbtn.oa.lit::before, .lbtn.oa .face::after, .lbtn.oa .chev, .lpill::after { animation: none !important; }
     .mini .wd { stroke-dashoffset: 0; }
     .mini .b3 { opacity: 0; }
     .rise { animation: none; opacity: 1; transform: none; }
@@ -403,8 +435,8 @@
 
     <div class="links rise">
       <a class="lbtn oa trace" href="#" data-key="lineoa">
-        <span class="face"><svg class="ic" viewBox="0 0 24 24"><use href="#i-line-w"/></svg><b>加入 LINE 官方領取福利</b></span>
-        <span class="face inv" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24"><use href="#i-line"/></svg><b>加入 LINE 官方領取福利</b></span>
+        <span class="face"><svg class="ic" viewBox="0 0 24 24"><use href="#i-line-w"/></svg><b>加入 LINE 官方領取福利</b><svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5.5l6.5 6.5L9 18.5"/></svg></span>
+        <span class="face inv" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24"><use href="#i-line"/></svg><b>加入 LINE 官方領取福利</b><svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5.5l6.5 6.5L9 18.5"/></svg></span>
       </a>
       <a class="lbtn grp trace" href="#" data-key="line">
         <span class="face"><svg class="ic" viewBox="0 0 24 24"><use href="#i-line-mono"/></svg><b>加入 LINE 社群</b></span>
@@ -563,8 +595,8 @@
       <svg class="sig big" viewBox="0 -1 114 37" aria-label="Snsheng"></svg>
       <div class="links">
         <a class="lbtn oa" href="#" data-key="lineoa">
-          <span class="face"><svg class="ic" viewBox="0 0 24 24"><use href="#i-line-w"/></svg><b>加入 LINE 官方領取福利</b></span>
-          <span class="face inv" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24"><use href="#i-line"/></svg><b>加入 LINE 官方領取福利</b></span>
+          <span class="face"><svg class="ic" viewBox="0 0 24 24"><use href="#i-line-w"/></svg><b>加入 LINE 官方領取福利</b><svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5.5l6.5 6.5L9 18.5"/></svg></span>
+          <span class="face inv" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24"><use href="#i-line"/></svg><b>加入 LINE 官方領取福利</b><svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5.5l6.5 6.5L9 18.5"/></svg></span>
         </a>
         <a class="lbtn grp" href="#" data-key="line">
           <span class="face"><svg class="ic" viewBox="0 0 24 24"><use href="#i-line-mono"/></svg><b>加入 LINE 社群</b></span>

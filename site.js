@@ -354,7 +354,17 @@ function start() {
     TOPC = phone ? { cx: -Ww * 0.03, cy: Hw * 0.285, hw: Ww * 0.4, hh: Hw * 0.15 } : { cx: 0, cy: Hw * 0.3, hw: Ww * 0.17, hh: Hw * 0.15 };
   }
   layout();
-  const mainStage = () => STAGE;
+  const mainStage = () => STAGE, topcAt = () => TOPC;
+  // 手機：卡片上面實際空出來的地方（卡片固定在底部，量它的上緣），主角就放在這裡，不會被卡片蓋住
+  function freeStage(key, fallback) {
+    if (!phone) return fallback;
+    const c = document.querySelector(`[data-shape="${key}"] > .copy`);
+    const top = c ? c.getBoundingClientRect().top : 0;
+    if (!(top > 120)) return fallback;
+    const yTop = 66, yBot = Math.max(yTop + 90, top - 16);
+    const wTop = (H / 2 - yTop) * Hw / H, wBot = (H / 2 - yBot) * Hw / H;
+    return { cx: -Ww * 0.03, cy: (wTop + wBot) / 2, hw: Ww * 0.42, hh: (wTop - wBot) / 2 };
+  }
 
   // ---------- 形狀 ----------
   const newShape = () => ({ pos: new Float32Array(N * 3), col: new Float32Array(N * 3), colD: new Float32Array(N * 3), size: new Float32Array(N), alpha: new Float32Array(N), dyn: null, perm: null });
@@ -997,7 +1007,7 @@ function start() {
   }
   // ---- OX：傾斜的雷達＋手畫一個 W ----
   function buildOx() {
-    const STAGE = phone ? TOPC : mainStage();   // 手機卡片比較高，主角放在上面
+    const STAGE = phone ? freeStage("ox", TOPC) : mainStage();   // 手機卡片比較高，主角放在上面
     const s = newShape();
     const R0 = Math.min(STAGE.hw, STAGE.hh) * 0.98, tilt = -0.9, ct = Math.cos(tilt), st = Math.sin(tilt);
     const nr = Math.floor(N * 0.22), ns = Math.floor(N * 0.05), nw = Math.floor(N * 0.1), np = Math.floor(N * 0.4), nt = Math.floor(N * 0.04);
@@ -1045,7 +1055,7 @@ function start() {
 
   // ---- 合成市場：立體的球 ----
   function buildMerge() {
-    const STAGE = phone ? TOPC : mainStage();   // 手機卡片比較高，主角放在上面
+    const STAGE = phone ? freeStage("merge", TOPC) : mainStage();   // 手機卡片比較高，主角放在上面
     const s = newShape();
     const nb = Math.floor(N * 0.8), U = new Float32Array(N * 3), cols = [GOLD, BLUE_LT, GOLD_LT, CREAM];
     for (let i = 0; i < nb; i++) {
@@ -1076,7 +1086,7 @@ function start() {
 
   // ---- 影片：畫框＋播放鍵 ----
   function buildFilms() {
-    const s = newShape();
+    const s = newShape(), TOPC = freeStage("films", topcAt());
     const smp = sampleCanvas(520, 360, g => {
       g.strokeStyle = "#fff"; g.fillStyle = "#fff"; g.lineWidth = 12; g.lineJoin = "round";
       g.beginPath(); g.moveTo(66, 30); g.arcTo(490, 30, 490, 330, 36); g.arcTo(490, 330, 30, 330, 36); g.arcTo(30, 330, 30, 30, 36); g.arcTo(30, 30, 490, 30, 36); g.closePath(); g.stroke();
@@ -1211,7 +1221,7 @@ function start() {
       g.fillStyle = "rgb(255,255,255)"; g.fill(new Path2D(LOGO_D));
       g.fillStyle = "rgb(0,0,255)"; g.fill(new Path2D(LOGO_B));
     }, 2);
-    const ST = phone ? STAGE : { cx: 0, cy: Hw * 0.22, hw: Ww * 0.2, hh: Hw * 0.2 };   // 電腦版卡片在下面正中間，logo 放上面
+    const ST = phone ? freeStage("logo", STAGE) : { cx: 0, cy: Hw * 0.22, hw: Ww * 0.2, hh: Hw * 0.2 };   // 電腦版卡片在下面正中間，logo 放上面
     const n = Math.floor(N * 0.74), R = Math.min(ST.hw, ST.hh) * 0.95, rect = { cx: ST.cx, cy: ST.cy + ST.hh * 0.12, hw: R, hh: R };
     const HALF = new Int8Array(N);
     placeSample(s, smp, 0, n, rect, { size: 0.21, jitter: 0.4, depth: 1.2,
@@ -1251,6 +1261,7 @@ function start() {
 
   let textReady = false;
   function buildAll() {
+    layout();
     seed = 7;
     shapes.nebula = buildCosmos();
     shapes.smiley = buildSmiley();
@@ -2011,14 +2022,16 @@ function start() {
     }
     tapQ = null;
     // 拖尾：動得快的粒子後面拉一條光
+    const trailK = yy.tr > 0 && yy.tr < 1 ? 0 : 1;   // 太極轉場時不拉拖尾
     if (fxOn) {
       for (let i = 0; i < N; i++) {
         const i3 = i * 3, i6 = i * 6, vx = V[i3], vy = V[i3 + 1], vz = V[i3 + 2], sp = Math.sqrt(vx * vx + vy * vy + vz * vz);
-        const a = clamp(sp * 5 - 0.05, 0, 1) * alpha[i] * 0.6;
+        const a = clamp(sp * 5 - 0.05, 0, 1) * alpha[i] * 0.6 * trailK;
         TA[i * 2] = a; TA[i * 2 + 1] = 0;
         if (a <= 0) { TP[i6] = TP[i6 + 3] = P[i3]; TP[i6 + 1] = TP[i6 + 4] = P[i3 + 1]; TP[i6 + 2] = TP[i6 + 5] = P[i3 + 2]; continue; }
         TP[i6] = P[i3]; TP[i6 + 1] = P[i3 + 1]; TP[i6 + 2] = P[i3 + 2];
-        TP[i6 + 3] = P[i3] - vx * 7; TP[i6 + 4] = P[i3 + 1] - vy * 7; TP[i6 + 5] = P[i3 + 2] - vz * 7;
+        const tl = 7 * Math.min(1, 2.2 / (sp * 7));   // 拖尾最長 2.2 單位
+        TP[i6 + 3] = P[i3] - vx * tl; TP[i6 + 4] = P[i3 + 1] - vy * tl; TP[i6 + 5] = P[i3 + 2] - vz * tl;
         TC[i6] = TC[i6 + 3] = col[i3]; TC[i6 + 1] = TC[i6 + 4] = col[i3 + 1]; TC[i6 + 2] = TC[i6 + 5] = col[i3 + 2];
         TCD[i6] = TCD[i6 + 3] = colD[i3]; TCD[i6 + 1] = TCD[i6 + 4] = colD[i3 + 1]; TCD[i6 + 2] = TCD[i6 + 5] = colD[i3 + 2];
       }
