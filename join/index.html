@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>註冊成為 Snsheng 會員</title>
+<meta name="description" content="註冊成為 Snsheng 會員：選交易所、用 Snsheng 的連結註冊、填 UID，審核完在 LINE 通知。">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#F5F0E6">
+<link rel="icon" type="image/png" href="../icon-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500&family=Noto+Serif+TC:wght@500;700&family=EB+Garamond:ital,wght@1,500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../paper.css">
+<link rel="stylesheet" href="join.css">
+</head>
+<body data-page="join" data-root="../">
+<main class="wrap">
+  <!-- 黑卡 -->
+  <section class="hero">
+    <div class="bcard tilt" id="bcard">
+      <span class="chip"></span>
+      <span class="nfc" aria-hidden="true"></span>
+      <p class="bc-title">MEMBER</p>
+      <svg class="sig gold" viewBox="0 -1 114 37" aria-label="Snsheng"></svg>
+      <p class="bc-no">SN · <span id="bcNo">0000</span> · 2026</p>
+    </div>
+    <h1 data-reveal>註冊成為 Snsheng 會員</h1>
+    <p class="lead" data-reveal>三個步驟，大概五分鐘。選一家交易所、用我的連結註冊、把 UID 填給我，審核好在 LINE 跟你說。</p>
+  </section>
+
+  <!-- 進度 -->
+  <ol class="steps" id="steps"><li class="on"><i>1</i>選交易所</li><li><i>2</i>註冊</li><li><i>3</i>填 UID</li></ol>
+
+  <!-- 1 選交易所 -->
+  <section class="pane" id="p1">
+    <h2>選一家交易所</h2>
+    <div class="ex-grid">
+      <button class="ex card tilt" type="button" data-ex="bitget"><img src="../media/ex/bitget.png" alt=""><b>Bitget</b><span class="stamp">已選</span></button>
+      <button class="ex card tilt" type="button" data-ex="bingx"><img src="../media/ex/bingx.png" alt=""><b>BingX</b><span class="stamp">已選</span></button>
+    </div>
+    <p class="muted">兩家都可以，選你習慣的就好。</p>
+  </section>
+
+  <!-- 2 註冊 -->
+  <section class="pane" id="p2" hidden>
+    <h2>用這個連結註冊 <span class="exn">Bitget</span></h2>
+    <a class="btn btn-ink big" id="exLink" href="#" target="_blank" rel="noopener"><img src="../media/ex/bitget.png" alt="" id="exLogo">打開 <span class="exn">Bitget</span> 註冊頁</a>
+    <ul class="tips">
+      <li>邀請碼會自動帶入，照註冊頁的步驟完成就好。</li>
+      <li>要用這個連結註冊，審核時才對得到。</li>
+      <li>註冊完，打開 App 點個人頭像，名字旁邊或下面那串數字就是 UID，可以直接複製。</li>
+    </ul>
+    <div class="row"><button class="btn btn-ghost" type="button" data-go="1">換一家</button><button class="btn btn-ink" type="button" data-go="3">我註冊好了，下一步</button></div>
+  </section>
+
+  <!-- 3 填 UID -->
+  <section class="pane" id="p3" hidden>
+    <h2>把 UID 填給我</h2>
+    <form id="form" novalidate>
+      <label>交易所<input id="fEx" readonly></label>
+      <label>UID<input id="fUid" inputmode="numeric" autocomplete="off" placeholder="一串數字" required></label>
+      <label>Email<input id="fMail" type="email" inputmode="email" autocomplete="email" placeholder="審核有問題時聯絡你" required></label>
+      <label>LINE 名稱（選填）<input id="fLine" autocomplete="nickname" placeholder="方便在 LINE 認出你"></label>
+      <p class="err" id="fErr"></p>
+      <div class="row"><button class="btn btn-ghost" type="button" data-go="2">上一步</button><button class="btn btn-ink" type="submit" id="fBtn">送出</button></div>
+      <p class="muted">資料只用來核對註冊和聯絡你，不會拿去做別的事。</p>
+    </form>
+  </section>
+
+  <!-- 4 完成 -->
+  <section class="pane done" id="p4" hidden>
+    <span class="stamp big-stamp">已收件</span>
+    <h2>收到了，審核中</h2>
+    <p>我會核對 UID，審核好在 LINE 跟你說。先加 LINE，才收得到通知。</p>
+    <p class="muted" id="doneInfo"></p>
+    <button class="btn btn-ghost" type="button" id="again">填錯了，重新填</button>
+  </section>
+</main>
+<script src="../paper.js"></script>
+<script src="join.js"></script>
+</body>
+</html>

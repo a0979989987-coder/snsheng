@@ -1,0 +1,124 @@
+/* 分頁共用：書稿的紙感（米色紙、墨色字、印章紅、一點金） */
+:root {
+  --paper: #F5F0E6; --paper2: #EFE8DA; --paper3: #E6DCC8;
+  --ink: #24221F; --ink2: #57524a; --ink3: #8d867a;
+  --seal: #A3362B; --gold: #b0842f; --gold-lt: #e0be74;
+  --line: rgba(36, 34, 31, .14); --line2: rgba(36, 34, 31, .08);
+  --green: #06C755;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { -webkit-text-size-adjust: 100%; overflow-x: hidden; }
+html, body { touch-action: pan-y; }
+body {
+  min-height: 100svh; color: var(--ink); background: var(--paper);
+  font-family: "Noto Sans TC", -apple-system, BlinkMacSystemFont, "PingFang TC", "Microsoft JhengHei", sans-serif;
+  -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent; overflow-x: clip;
+}
+a { color: inherit; text-decoration: none; }
+img, a, svg { -webkit-user-drag: none; }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+
+/* 紙的紋理和慢慢飄的墨暈 */
+.grain { position: fixed; inset: 0; z-index: 0; pointer-events: none; opacity: .5; mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .55  0 0 0 0 .47  0 0 0 0 .36  0 0 0 .22 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+.wash { position: fixed; inset: -20%; z-index: 0; pointer-events: none; opacity: .55;
+  background:
+    radial-gradient(38% 30% at 20% 18%, rgba(176, 132, 47, .14), transparent 70%),
+    radial-gradient(34% 28% at 85% 42%, rgba(163, 54, 43, .07), transparent 70%),
+    radial-gradient(40% 34% at 40% 88%, rgba(36, 34, 31, .07), transparent 70%);
+  animation: drift 38s ease-in-out infinite alternate; }
+@keyframes drift { to { transform: translate3d(4%, -3%, 0) rotate(4deg); } }
+#dust { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; }
+main, header.top, footer.end { position: relative; z-index: 2; }
+
+/* 頁首：左邊光筆寫的 Snsheng，右邊分頁 */
+header.top {
+  position: sticky; top: 0; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: calc(10px + env(safe-area-inset-top)) 18px 10px;
+  background: linear-gradient(var(--paper) 70%, rgba(245, 240, 230, 0));
+}
+.brand { display: flex; align-items: center; gap: 8px; }
+.brand img { width: 30px; height: 30px; border-radius: 50%; box-shadow: 0 0 0 1.5px #fff, 0 0 0 2.5px rgba(176, 132, 47, .5); }
+.sig { display: block; width: 96px; height: 31px; overflow: visible; }
+.sig path { fill: none; stroke: var(--ink); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.sig .pen { fill: var(--gold); opacity: 0; }
+nav.tabs { display: flex; gap: 4px; }
+nav.tabs a { padding: 7px 11px; border-radius: 99px; font-size: 14px; color: var(--ink2); transition: background .2s, color .2s; }
+nav.tabs a.cur { color: var(--paper); background: var(--ink); }
+@media (hover: hover) { nav.tabs a:not(.cur):hover { background: var(--paper3); } }
+
+.wrap { max-width: 720px; margin: 0 auto; padding: 8px 20px 40px; }
+.eyebrow { font-size: 12px; letter-spacing: 4px; color: var(--seal); }
+h1 { margin-top: 8px; font-family: "Noto Serif TC", serif; font-weight: 700; font-size: 32px; line-height: 1.3; letter-spacing: 1px; }
+h2 { font-family: "Noto Serif TC", serif; font-weight: 700; font-size: 22px; line-height: 1.4; }
+h3 { font-family: "Noto Serif TC", serif; font-weight: 700; font-size: 18px; line-height: 1.45; }
+p, li { font-size: 16px; line-height: 1.9; color: var(--ink); }
+.lead { margin-top: 10px; color: var(--ink2); }
+.muted { color: var(--ink3); font-size: 13px; line-height: 1.7; }
+
+/* 標題下面一筆墨線，捲到時畫出來 */
+.inku { display: block; width: 120px; height: 10px; margin-top: 10px; overflow: visible; }
+.inku path { fill: none; stroke: var(--seal); stroke-width: 3; stroke-linecap: round; stroke-dasharray: 130; stroke-dashoffset: 130; transition: stroke-dashoffset 1s cubic-bezier(.6, 0, .2, 1) .2s; }
+.in .inku path, .inku.in path { stroke-dashoffset: 0; }
+
+/* 捲到才浮出來 */
+[data-reveal] { opacity: 0; transform: translateY(16px); transition: opacity .7s, transform .7s cubic-bezier(.2, .7, .2, 1); }
+[data-reveal].in { opacity: 1; transform: none; }
+
+/* 卡片 */
+.card {
+  position: relative; display: block; padding: 18px 18px 20px; border-radius: 18px;
+  background: linear-gradient(180deg, #fbf8f1, var(--paper2)); border: 1px solid var(--line);
+  box-shadow: 0 1px 0 #fff inset, 0 10px 26px rgba(70, 56, 30, .08);
+  transition: box-shadow .3s;
+}
+.tilt { transform-style: preserve-3d; will-change: transform; }
+.tilt::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: var(--gl, 0); transition: opacity .3s;
+  background: linear-gradient(115deg, transparent 32%, rgba(255, 255, 255, .55) 48%, transparent 62%); background-size: 260% 100%; background-position: var(--gx, 50%) 0; }
+
+/* 印章（蓋下去的動畫） */
+.stamp { display: inline-block; padding: 4px 10px 4px 13px; border: 2px solid var(--seal); border-radius: 4px; color: var(--seal);
+  font-family: "Noto Serif TC", serif; font-weight: 700; font-size: 14px; letter-spacing: 4px; transform: rotate(-6deg); opacity: .92; }
+.stamp.hit { animation: stamp .45s cubic-bezier(.3, 1.6, .5, 1); }
+@keyframes stamp { 0% { transform: rotate(-6deg) scale(2.2); opacity: 0; } 60% { opacity: 1; } 100% { transform: rotate(-6deg) scale(1); opacity: .92; } }
+
+/* 按鈕 */
+.btn {
+  position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 48px; padding: 0 20px; border-radius: 14px;
+  font-size: 15px; font-weight: 500; letter-spacing: .5px; overflow: hidden; touch-action: manipulation; transition: transform .15s;
+}
+.btn:active { transform: scale(.97); }
+.btn-ink { background: var(--ink); color: var(--paper); }
+.btn-line { background: linear-gradient(180deg, #2be07f, #06c755 55%, #03a948); color: #fff; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .5), 0 8px 20px rgba(6, 199, 85, .25); }
+.btn-ghost { border: 1px solid var(--line); background: rgba(255, 255, 255, .45); color: var(--ink); }
+.btn svg { width: 20px; height: 20px; }
+.btn-line::after { content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: 40%; pointer-events: none;
+  background: linear-gradient(105deg, rgba(255, 255, 255, 0) 15%, rgba(255, 255, 255, .42) 50%, rgba(255, 255, 255, 0) 85%);
+  transform: translateX(-130%); animation: sheen 5s cubic-bezier(.45, 0, .2, 1) 1.2s infinite; }
+@keyframes sheen { 0% { transform: translateX(-130%); } 24%, 100% { transform: translateX(270%); } }
+
+/* 頁尾：一起聊＋低調的會員黑卡 */
+footer.end { max-width: 720px; margin: 0 auto; padding: 10px 20px calc(30px + env(safe-area-inset-bottom)); }
+.talk { padding: 22px 20px; border-radius: 20px; background: var(--ink); color: var(--paper); text-align: center; overflow: hidden; position: relative; }
+.talk h3 { color: var(--paper); }
+.talk p { color: rgba(245, 240, 230, .72); font-size: 14px; line-height: 1.8; margin-top: 6px; }
+.talk .btns { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
+.talk .btn { width: 100%; }
+.talk .btn-ghost { background: rgba(255, 255, 255, .06); color: var(--paper); border-color: rgba(245, 240, 230, .18); }
+.member {
+  display: flex; align-items: center; gap: 12px; margin-top: 14px; padding: 12px 14px; border-radius: 14px;
+  background: linear-gradient(135deg, #1b1a18, #2b2925 60%, #1b1a18); color: #efe7d6; border: 1px solid rgba(224, 190, 116, .35);
+  font-size: 14px; position: relative; overflow: hidden;
+}
+.member .chip { width: 30px; height: 22px; border-radius: 5px; background: linear-gradient(135deg, #f3d48d, #b0842f); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .2); flex: none; }
+.member b { font-weight: 500; letter-spacing: .5px; }
+.member small { margin-left: auto; color: var(--gold-lt); }
+.member::after { content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: 35%; background: linear-gradient(105deg, transparent, rgba(255, 230, 170, .16), transparent); transform: translateX(-130%); animation: sheen 6s ease-in-out 2s infinite; }
+.legal { margin-top: 18px; text-align: center; font-size: 12px; line-height: 1.8; color: var(--ink3); }
+.legal a { text-decoration: underline; text-underline-offset: 3px; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+  [data-reveal] { opacity: 1; transform: none; }
+  .inku path { stroke-dashoffset: 0; }
+}

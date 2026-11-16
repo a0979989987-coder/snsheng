@@ -512,7 +512,8 @@ function start() {
       g.beginPath(); g.moveTo(90, 212); g.quadraticCurveTo(200, 192, 314, 204); g.quadraticCurveTo(302, 332, 196, 340); g.quadraticCurveTo(102, 336, 90, 212); g.fill();
     }, 2);
     const fill = sampleCanvas(400, 400, g => { g.fillStyle = "#fff"; g.beginPath(); g.arc(200, 200, 168, 0, 6.283); g.fill(); }, 4);
-    const R = Math.min(STAGE.hw, STAGE.hh) * 1.0, rect = { cx: STAGE.cx, cy: STAGE.cy, hw: R, hh: R };
+    const SG = phone ? freeStage("smiley", STAGE) : STAGE;   // 手機：放在卡片上面的空位
+    const R = Math.min(SG.hw, SG.hh) * 1.0, rect = { cx: SG.cx, cy: SG.cy, hw: R, hh: R };
     const a = Math.floor(N * 0.6), b = Math.floor(N * 0.84);
     const TAG = new Int8Array(N), BASE = new Float32Array(N * 2);
     const sph = (px, py) => { const dx = (px - 200) / 185, dy = (py - 200) / 185; return Math.sqrt(Math.max(0, 1 - dx * dx - dy * dy)) * R * 0.55; };

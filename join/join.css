@@ -1,0 +1,58 @@
+.hero { padding: 12px 0 6px; text-align: center; }
+.hero h1 { font-size: 27px; }
+.hero h1 { margin-top: 22px; }
+/* 黑卡：金屬黑、金色晶片、光澤掃過、跟著手指傾斜 */
+.bcard {
+  position: relative; width: min(330px, 86vw); aspect-ratio: 1.586; margin: 6px auto 0; border-radius: 18px; padding: 18px 20px; text-align: left; overflow: hidden;
+  background: radial-gradient(120% 90% at 85% 0%, #3a3631 0%, rgba(58, 54, 49, 0) 55%), linear-gradient(135deg, #121110 0%, #24221f 45%, #0c0b0a 100%);
+  border: 1px solid rgba(224, 190, 116, .38); color: #efe7d6;
+  box-shadow: 0 22px 44px rgba(30, 24, 14, .35), 0 2px 0 rgba(255, 255, 255, .06) inset;
+  animation: cardIn 1s cubic-bezier(.2, 1, .3, 1) both;
+}
+@keyframes cardIn { from { transform: perspective(800px) rotateX(28deg) translateY(30px) scale(.92); opacity: 0; } }
+.bcard::before { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(115deg, rgba(255, 255, 255, .025) 0 2px, transparent 2px 7px); pointer-events: none; }
+.bcard::after { background: linear-gradient(115deg, transparent 30%, rgba(255, 236, 190, .22) 48%, transparent 62%) !important; background-size: 260% 100% !important; }
+.bcard .chip { position: absolute; left: 20px; top: 46px; width: 42px; height: 32px; border-radius: 7px; background: linear-gradient(135deg, #f6dc9a, #c39642 55%, #8a6526); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .25); }
+.bcard .chip::after { content: ""; position: absolute; inset: 7px 9px; border: 1px solid rgba(70, 48, 10, .45); border-radius: 3px; }
+.bcard .nfc { position: absolute; left: 72px; top: 50px; width: 18px; height: 24px; border: 2px solid rgba(239, 231, 214, .5); border-left: 0; border-radius: 0 50% 50% 0 / 0 50% 50% 0; }
+.bc-title { position: absolute; right: 20px; top: 16px; font-family: "EB Garamond", serif; font-style: italic; font-size: 15px; letter-spacing: 4px; color: #e0be74; }
+.bcard .sig.gold { position: absolute; left: 18px; bottom: 34px; width: 150px; height: 48px; }
+.bcard .sig.gold path { stroke: #e9c878; stroke-width: 1.5; filter: drop-shadow(0 0 3px rgba(233, 200, 120, .6)); }
+.bcard .sig.gold .pen { fill: #fff3cf; }
+.bc-no { position: absolute; left: 20px; bottom: 14px; font-size: 12px; letter-spacing: 3px; color: rgba(239, 231, 214, .55); font-variant-numeric: tabular-nums; }
+
+.steps { display: flex; gap: 6px; margin: 26px 0 10px; list-style: none; }
+.steps li { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 13px; color: var(--ink3); position: relative; }
+.steps li i { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-family: "Noto Serif TC", serif; border: 1.5px solid var(--line); background: var(--paper); transition: background .35s, color .35s, border-color .35s, transform .35s; }
+.steps li.on { color: var(--ink); }
+.steps li.on i { background: var(--ink); color: var(--paper); border-color: var(--ink); transform: scale(1.08); }
+.steps li.done i { background: var(--seal); border-color: var(--seal); color: #fff; }
+.steps li + li::before { content: ""; position: absolute; top: 15px; right: 50%; width: 100%; height: 1.5px; background: var(--line); z-index: -1; }
+
+.pane { margin-top: 14px; animation: paneIn .5s cubic-bezier(.2, .8, .2, 1) both; }
+@keyframes paneIn { from { opacity: 0; transform: translateX(24px); } }
+.pane h2 { margin-bottom: 12px; }
+.ex-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.ex { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 22px 10px; text-align: center; }
+.ex img { width: 64px; height: 64px; border-radius: 16px; }
+.ex b { font-size: 18px; font-weight: 500; }
+.ex .stamp { position: absolute; right: 10px; top: 10px; opacity: 0; }
+.ex.sel { border-color: var(--ink); box-shadow: 0 0 0 2px var(--ink), 0 12px 30px rgba(70, 56, 30, .14); }
+.ex.sel .stamp { opacity: .92; }
+.btn.big { width: 100%; height: 58px; font-size: 17px; }
+.btn.big img { width: 30px; height: 30px; border-radius: 8px; }
+.tips { margin: 14px 0 0 18px; }
+.tips li { font-size: 15px; line-height: 1.8; color: var(--ink2); }
+.row { display: flex; gap: 10px; margin-top: 16px; }
+.row .btn { flex: 1; padding: 0 12px; }
+form label { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; font-size: 13px; color: var(--ink2); }
+form input { height: 48px; padding: 0 14px; border-radius: 12px; border: 1px solid var(--line); background: #fffdf8; font: 500 16px "Noto Sans TC", sans-serif; color: var(--ink); outline: none; transition: border-color .2s, box-shadow .2s; }
+form input:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(176, 132, 47, .15); }
+form input[readonly] { background: var(--paper2); color: var(--ink2); }
+form input.bad { border-color: var(--seal); animation: shake .35s; }
+@keyframes shake { 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+.err { min-height: 1.2em; margin-top: 10px; font-size: 13px; color: var(--seal); }
+.done { text-align: center; padding: 20px 0; }
+.big-stamp { font-size: 26px; padding: 8px 18px 8px 22px; margin-bottom: 16px; border-width: 3px; }
+.done p { margin-top: 8px; }
+.done .btn { margin-top: 16px; }

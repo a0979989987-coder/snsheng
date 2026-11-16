@@ -1,0 +1,76 @@
+/* 教學分頁：學習路徑和每支片的文字版 */
+.intro { padding: 10px 0 6px; }
+.prog-box { display: flex; align-items: center; gap: 12px; margin-top: 16px; padding: 12px 14px; border-radius: 14px; background: rgba(255, 255, 255, .5); border: 1px solid var(--line); }
+.prog-box .ring { width: 46px; height: 46px; flex: none; }
+.prog-box .ring circle { fill: none; stroke-width: 4; }
+.prog-box .ring .bg { stroke: var(--paper3); }
+.prog-box .ring .fg { stroke: var(--seal); stroke-linecap: round; transform: rotate(-90deg); transform-origin: 50% 50%; transition: stroke-dashoffset 1s cubic-bezier(.3, 1, .3, 1); }
+.prog-box b { font-family: "Noto Serif TC", serif; font-size: 18px; }
+.prog-box p { font-size: 13px; color: var(--ink2); line-height: 1.6; }
+
+/* 路徑：左邊一條墨線，滑下去會一路畫出來 */
+.path { position: relative; margin-top: 26px; padding-left: 44px; }
+.path .rail { position: absolute; left: 17px; top: 8px; bottom: 8px; width: 2px; background: var(--line); }
+.path .ink { position: absolute; left: 17px; top: 8px; width: 2px; height: 0; background: var(--seal); box-shadow: 0 0 6px rgba(163, 54, 43, .4); }
+.stage { position: relative; margin-bottom: 30px; }
+.stage .seal { position: absolute; left: -44px; top: -2px; width: 36px; height: 36px; border-radius: 8px; display: grid; place-items: center; background: var(--paper); border: 2px solid var(--seal); color: var(--seal); font-family: "Noto Serif TC", serif; font-weight: 700; font-size: 17px; transform: rotate(-6deg) scale(.6); opacity: 0; transition: transform .45s cubic-bezier(.3, 1.6, .5, 1), opacity .3s, background .3s, color .3s; }
+.stage.in .seal { transform: rotate(-6deg) scale(1); opacity: 1; }
+.stage.done .seal { background: var(--seal); color: #fff; }
+.stage h2 { font-size: 21px; }
+.stage .quote { margin-top: 4px; font-family: "Noto Serif TC", serif; font-size: 15px; line-height: 1.8; color: var(--ink2); }
+.vlist { display: grid; gap: 12px; margin-top: 14px; }
+.vcard { display: grid; grid-template-columns: 128px 1fr; gap: 12px; align-items: center; padding: 10px; }
+.vcard .th { position: relative; aspect-ratio: 16 / 9; border-radius: 10px; overflow: hidden; background: #1b1a18; }
+.vcard .th img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .6s; }
+.vcard:hover .th img { transform: scale(1.06); }
+.vcard .th .d { position: absolute; right: 5px; bottom: 5px; padding: 1px 6px; border-radius: 6px; background: rgba(0, 0, 0, .72); color: #fff; font-size: 11px; font-variant-numeric: tabular-nums; }
+.vcard .th .sh { position: absolute; left: 5px; top: 5px; padding: 1px 6px; border-radius: 6px; background: var(--seal); color: #fff; font-size: 10px; letter-spacing: 1px; }
+.vcard h3 { font-size: 16px; }
+.vcard p { margin-top: 2px; font-size: 13px; line-height: 1.6; color: var(--ink2); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.vcard .seen { display: none; margin-top: 4px; font-size: 12px; color: var(--seal); }
+.vcard.seen .seen { display: inline-block; }
+
+/* 單支片的頁面 */
+.crumb { font-size: 13px; color: var(--ink3); }
+.crumb a { border-bottom: 1px solid var(--line); }
+.meta { margin-top: 8px; font-size: 13px; color: var(--ink3); }
+.player { position: relative; margin-top: 16px; border-radius: 16px; overflow: hidden; background: #111; aspect-ratio: 16 / 9; box-shadow: 0 16px 36px rgba(40, 30, 14, .22); }
+.player.vert { aspect-ratio: 9 / 16; max-width: 340px; margin-left: auto; margin-right: auto; }
+.player img { width: 100%; height: 100%; object-fit: cover; display: block; filter: saturate(.95); transition: transform .8s; }
+.player button { position: absolute; inset: 0; display: grid; place-items: center; background: radial-gradient(circle, rgba(0, 0, 0, .05), rgba(0, 0, 0, .35)); }
+.player button span { width: 72px; height: 72px; border-radius: 50%; display: grid; place-items: center; background: rgba(245, 240, 230, .92); box-shadow: 0 8px 30px rgba(0, 0, 0, .35); transition: transform .25s; }
+.player button span::before { content: ""; margin-left: 6px; border-left: 22px solid var(--ink); border-top: 14px solid transparent; border-bottom: 14px solid transparent; }
+.player button:hover span { transform: scale(1.08); }
+.player::after { content: ""; position: absolute; inset: -6px; border-radius: 20px; border: 2px solid var(--gold-lt); opacity: 0; animation: pulse 2.6s ease-out 1s infinite; pointer-events: none; }
+.player.on::after { display: none; }
+@keyframes pulse { 0% { opacity: .7; transform: scale(.97); } 100% { opacity: 0; transform: scale(1.04); } }
+.player iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.keys { margin-top: 22px; padding: 18px 18px 16px; }
+.keys .stamp { position: absolute; right: 14px; top: 12px; }
+.keys h2 { font-size: 19px; }
+.keys ol { margin: 10px 0 0 20px; }
+.keys li { margin-top: 6px; font-size: 15.5px; line-height: 1.8; }
+.chaps { margin-top: 28px; }
+.chap { position: relative; padding: 0 0 18px 26px; }
+.chap::before { content: ""; position: absolute; left: 6px; top: 12px; bottom: -4px; width: 1.5px; background: var(--line); }
+.chap:last-child::before { display: none; }
+.chap::after { content: ""; position: absolute; left: 1px; top: 6px; width: 11px; height: 11px; border-radius: 50%; background: var(--paper); border: 2px solid var(--seal); }
+.chap .ts { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border-radius: 99px; background: var(--ink); color: var(--paper); font-size: 12px; font-variant-numeric: tabular-nums; transition: transform .15s; }
+.chap .ts:active { transform: scale(.95); }
+.chap .ts::before { content: ""; border-left: 7px solid var(--paper); border-top: 4.5px solid transparent; border-bottom: 4.5px solid transparent; }
+.chap h3 { margin-top: 6px; }
+.chap p { margin-top: 4px; font-size: 15.5px; }
+.faq { margin-top: 18px; }
+.faq details { border-bottom: 1px solid var(--line); }
+.faq summary { list-style: none; cursor: pointer; padding: 14px 30px 14px 0; position: relative; font-family: "Noto Serif TC", serif; font-weight: 700; font-size: 16px; }
+.faq summary::-webkit-details-marker { display: none; }
+.faq summary::after { content: "+"; position: absolute; right: 4px; top: 10px; font-size: 22px; color: var(--seal); transition: transform .3s; }
+.faq details[open] summary::after { transform: rotate(45deg); }
+.faq details p { padding: 0 0 14px; font-size: 15.5px; color: var(--ink2); animation: open .35s ease-out; }
+@keyframes open { from { opacity: 0; transform: translateY(-6px); } }
+.nextprev { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 26px; }
+.nextprev a { padding: 12px 14px; }
+.nextprev small { display: block; font-size: 12px; color: var(--ink3); }
+.nextprev b { display: block; margin-top: 2px; font-family: "Noto Serif TC", serif; font-size: 15px; line-height: 1.5; }
+.nextprev .nx { text-align: right; }
+.readbar { position: fixed; left: 0; top: 0; height: 3px; width: 0; z-index: 10; background: linear-gradient(90deg, var(--gold), var(--seal)); }

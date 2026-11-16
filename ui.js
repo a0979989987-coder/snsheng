@@ -275,6 +275,18 @@
     }
   }
 
+  // 我是誰：作品數字跳上去
+  hooks.show.smiley = P => {
+    const tok = P.tok;
+    P.card.querySelectorAll("[data-count]").forEach(el => {
+      const to = +el.dataset.count; if (!isFinite(to)) return;
+      if (reduce) { el.textContent = to; return; }
+      const t0 = performance.now() + 600;
+      el.textContent = "0";
+      const step = now => { if (tok !== P.tok) return; const u = Math.min(1, Math.max(0, (now - t0) / 1200)); el.textContent = Math.round(to * (1 - Math.pow(1 - u, 3))); if (u < 1) requestAnimationFrame(step); };
+      requestAnimationFrame(step);
+    });
+  };
   // 書：頁數跳上去
   hooks.show.book = P => {
     const el = P.card.querySelector(".count"); if (!el) return;
@@ -461,6 +473,7 @@
     if (b && b !== blk) { html += `<h3>${b}</h3>`; blk = b; }
     html += `<a href="#${P.sec.id}" data-i="${i}">${P.sec.dataset.title}</a>`;
   });
+  html += `<h3>更多</h3><a href="learn/">教學</a><a href="tools/">交易小工具</a><a href="join/" class="dim">註冊成為 Snsheng 會員</a>`;
   chapList.innerHTML = html;
   function openChap(on) {
     if (on) {
@@ -473,7 +486,7 @@
   meBtn.addEventListener("click", () => openChap(!chap.classList.contains("on")));
   chap.querySelector(".bg").addEventListener("click", () => openChap(false));
   chapList.addEventListener("click", e => {
-    const a = e.target.closest("a"); if (!a) return;
+    const a = e.target.closest("a"); if (!a || a.dataset.i == null) return;   // 分頁連結照常打開
     e.preventDefault();
     const P = chapters[+a.dataset.i];
     openChap(false);

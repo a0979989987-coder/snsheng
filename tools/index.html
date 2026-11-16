@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>交易小工具｜盈虧比、倉位計算、結構小測驗、假突破練習｜Snsheng</title>
+<meta name="description" content="Snsheng 做的交易小工具：盈虧比計算、倉位計算、極陽平衡極陰結構小測驗、假突破判斷練習。不用留資料，打開就能用。">
+<meta name="theme-color" content="#F5F0E6">
+<meta property="og:title" content="交易小工具｜Snsheng">
+<meta property="og:description" content="盈虧比、倉位計算、結構小測驗、假突破練習，不用留資料。">
+<meta property="og:image" content="https://a0979989987-coder.github.io/snsheng/og.png">
+<link rel="icon" type="image/png" href="../icon-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500&family=Noto+Serif+TC:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../paper.css">
+<link rel="stylesheet" href="tools.css">
+</head>
+<body data-page="tools" data-root="../">
+<main class="wrap">
+  <section class="intro" data-reveal>
+    <p class="eyebrow">小工具</p>
+    <h1>下單之前，先算一下</h1>
+    <svg class="inku" viewBox="0 0 120 10"><path d="M2 6 C30 2, 60 9, 118 4"/></svg>
+    <p class="lead">四個小工具，打開就能用，不用留任何資料，數字只在你的手機裡算。</p>
+    <div class="jump">
+      <a href="#rr">盈虧比</a><a href="#size">倉位</a><a href="#quiz">結構小測驗</a><a href="#fake">假突破練習</a>
+    </div>
+  </section>
+
+  <!-- 盈虧比 -->
+  <section class="tool card" id="rr" data-reveal>
+    <div class="head"><span class="no">01</span><h2>盈虧比計算</h2></div>
+    <p class="muted">輸入進場、止損、止盈，看這筆單賺的空間是賠的空間幾倍。</p>
+    <div class="seg" role="radiogroup" aria-label="方向"><button class="on" data-dir="long" type="button">做多</button><button data-dir="short" type="button">做空</button></div>
+    <div class="grid3">
+      <label>進場價<input inputmode="decimal" id="rrE" value="100"></label>
+      <label>止損價<input inputmode="decimal" id="rrS" value="96"></label>
+      <label>止盈價<input inputmode="decimal" id="rrT" value="112"></label>
+    </div>
+    <div class="rr-out">
+      <svg class="ladder" id="rrLad" viewBox="0 0 120 220" aria-hidden="true">
+        <rect class="zone up" id="rrUp" x="34" width="52" rx="4"/><rect class="zone dn" id="rrDn" x="34" width="52" rx="4"/>
+        <line class="eline" id="rrEl" x1="20" x2="100"/><text class="lt" id="rrLE" x="104">進場</text>
+        <text class="lt up" id="rrLT" x="104">止盈</text><text class="lt dn" id="rrLS" x="104">止損</text>
+      </svg>
+      <div class="rr-num">
+        <p class="muted">盈虧比</p>
+        <p class="big"><span>1 : </span><b id="rrR">3.0</b></p>
+        <p class="pct"><span class="up">止盈 <b id="rrTp">+12%</b></span><span class="dn">止損 <b id="rrSp">-4%</b></span></p>
+        <p class="warn" id="rrW"></p>
+      </div>
+    </div>
+    <blockquote>「牆越遠，空間越大，盈虧比越好。」<br>「有趨勢有結構，才知道止損怎麼放。」</blockquote>
+    <a class="side-member" href="../join/">註冊成為 Snsheng 會員 ›</a>
+  </section>
+
+  <!-- 倉位 -->
+  <section class="tool card" id="size" data-reveal>
+    <div class="head"><span class="no">02</span><h2>倉位計算</h2></div>
+    <p class="muted">先決定這筆最多願意虧本金的幾 %，再用止損距離反推可以開多大。</p>
+    <div class="grid3">
+      <label>本金<input inputmode="decimal" id="szC" value="1000"></label>
+      <label>最多虧本金幾 %<input inputmode="decimal" id="szR" value="2"></label>
+      <label>止損距離 %<input inputmode="decimal" id="szD" value="4"></label>
+    </div>
+    <label class="lev">槓桿倍數（只影響要放多少保證金）<input type="range" id="szL" min="1" max="20" value="5"><output id="szLv">5 倍</output></label>
+    <div class="size-out">
+      <div class="kv"><span>倉位價值</span><b id="szP">500</b></div>
+      <div class="kv"><span>要放的保證金</span><b id="szM">100</b></div>
+      <div class="kv dn"><span>打到止損會虧</span><b id="szX">20</b></div>
+    </div>
+    <div class="bar" aria-hidden="true"><i class="m" id="szBm"></i><i class="x" id="szBx"></i></div>
+    <p class="muted bar-note">整條是本金，金色是保證金，紅色是打到止損會虧的部分。</p>
+    <p class="warn" id="szW"></p>
+    <p class="muted">這裡只是計算，不是建議你開多少。</p>
+    <a class="side-member" href="../join/">註冊成為 Snsheng 會員 ›</a>
+  </section>
+
+  <!-- 結構小測驗 -->
+  <section class="tool card" id="quiz" data-reveal>
+    <div class="head"><span class="no">03</span><h2>結構小測驗</h2><span class="score" id="qzScore">0 / 0</span></div>
+    <p class="muted">看這段 K 線，現在是極陽、平衡，還是極陰？</p>
+    <div class="chart" id="qzChart"></div>
+    <div class="choices" id="qzBtns">
+      <button type="button" data-a="yang">極陽</button><button type="button" data-a="bal">平衡</button><button type="button" data-a="yin">極陰</button>
+    </div>
+    <div class="reveal-box" id="qzOut" hidden>
+      <span class="stamp" id="qzStamp">答對</span>
+      <h3 id="qzTitle">極陽</h3>
+      <p id="qzWhy"></p>
+      <button class="btn btn-ink" type="button" id="qzNext">下一題</button>
+    </div>
+    <a class="side-member" href="../join/">註冊成為 Snsheng 會員 ›</a>
+  </section>
+
+  <!-- 假突破練習 -->
+  <section class="tool card" id="fake" data-reveal>
+    <div class="head"><span class="no">04</span><h2>假突破判斷練習</h2><span class="score" id="fkScore">0 / 0</span></div>
+    <p class="muted">價格已經突破頂，接著走了幾根。照定義，這次突破成立，還是假突破？</p>
+    <div class="chart" id="fkChart"></div>
+    <div class="choices two" id="fkBtns">
+      <button type="button" data-a="ok">突破成立</button><button type="button" data-a="fake">假突破</button>
+    </div>
+    <div class="reveal-box" id="fkOut" hidden>
+      <span class="stamp" id="fkStamp">答對</span>
+      <h3 id="fkTitle"></h3>
+      <p id="fkWhy"></p>
+      <button class="btn btn-ink" type="button" id="fkNext">再一題</button>
+    </div>
+    <blockquote>「只要突破就算突破頂部，影線也算。突破後又跌破結構的底，就是假突破；守住結構底，突破成立。」</blockquote>
+    <a class="side-member" href="../join/">註冊成為 Snsheng 會員 ›</a>
+  </section>
+  <p class="muted demo-note">測驗和練習的 K 線是照定義產生的示意圖，不是真實行情。</p>
+</main>
+<script src="../paper.js"></script>
+<script src="tools.js"></script>
+</body>
+</html>
