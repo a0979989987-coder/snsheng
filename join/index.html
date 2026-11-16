@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#F5F0E6">
 <link rel="icon" type="image/png" href="../icon-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500&family=Noto+Serif+TC:wght@500;700&family=EB+Garamond:ital,wght@1,500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500&family=Noto+Serif+TC:wght@500;700&family=Jost:wght@500&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../paper.css">
 <link rel="stylesheet" href="join.css">
 </head>
@@ -17,13 +17,14 @@
 <main class="wrap">
   <!-- 黑卡 -->
   <section class="hero">
-    <div class="bcard tilt" id="bcard">
-      <span class="chip"></span>
-      <span class="nfc" aria-hidden="true"></span>
-      <p class="bc-title">MEMBER</p>
-      <svg class="sig gold" viewBox="0 -1 114 37" aria-label="Snsheng"></svg>
-      <p class="bc-no">SN · <span id="bcNo">0000</span> · 2026</p>
-    </div>
+    <div class="bc-wrap"><div class="oh-card" id="bcard" aria-label="會員黑卡">
+      <span class="oc-body"></span><span class="oc-lines"></span><span class="oc-light"></span>
+      <span class="oc-logo" aria-hidden="true"><i></i><img src="../media/card/eng.png" alt=""></span><span class="oc-sheen"></span>
+      <span class="oc-bevel"></span><span class="oc-silver"></span>
+      <span class="oc-brand">OX TRADING</span><span class="oc-since"><small>SINCE</small><span class="oc-emb">2026</span></span>
+      <span class="oc-dots" aria-hidden="true"><b><i></i><i></i><i></i><i></i></b><b><i></i><i></i><i></i><i></i></b><b><i></i><i></i><i></i><i></i></b></span>
+      <span class="oc-name oc-emb zh">你的名字</span>
+    </div></div>
     <h1 data-reveal>註冊成為 Snsheng 會員</h1>
     <p class="lead" data-reveal>三個步驟，大概五分鐘。選一家交易所、用我的連結註冊、把 UID 填給我，審核好在 LINE 跟你說。</p>
   </section>

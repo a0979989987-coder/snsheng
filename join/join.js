@@ -9,10 +9,22 @@
   const $ = id => document.getElementById(id);
   const KEY = "sn-join";
   let ex = "";
-  // 卡號：每個人進來看到一組自己的號碼（只是好看）
-  const no = localStorage.getItem("sn-card-no") || String(Math.floor(1000 + Math.random() * 9000));
-  localStorage.setItem("sn-card-no", no);
-  $("bcNo").textContent = no;
+  // 黑卡跟著手指傾斜；沒人碰的時候自己慢慢晃，流光跟著角度走（跟 OX 會員首頁同一套）
+  const card = $("bcard");
+  if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    const st = { x: 0, y: 0, px: 0, py: 0, hold: -1e9, seen: true };
+    const move = e => { const r = card.getBoundingClientRect(); st.px = Math.max(-1, Math.min(1, ((e.clientX - r.left) / r.width - .5) * 2)); st.py = Math.max(-1, Math.min(1, ((e.clientY - r.top) / r.height - .5) * 2)); st.hold = performance.now(); };
+    card.addEventListener("pointermove", move, { passive: true }); card.addEventListener("pointerdown", move, { passive: true });
+    if ("IntersectionObserver" in window) new IntersectionObserver(es => { st.seen = es[0].isIntersecting; }).observe(card);
+    (function tilt(now) {
+      requestAnimationFrame(tilt);
+      if (!st.seen) return;
+      const t = now / 1000, free = now - st.hold > 900;
+      const gx = free ? Math.sin(t * .62) * .34 : st.px, gy = free ? Math.sin(t * .47 + 1.3) * .24 : st.py;
+      st.x += (gx - st.x) * (free ? .04 : .16); st.y += (gy - st.y) * (free ? .04 : .16);
+      card.style.setProperty("--tx", st.x.toFixed(3)); card.style.setProperty("--ty", st.y.toFixed(3));
+    })(0);
+  }
 
   function go(n) {
     for (let i = 1; i <= 4; i++) $("p" + i).hidden = i !== n;
