@@ -74,3 +74,4 @@
 .nextprev b { display: block; margin-top: 2px; font-family: "Noto Serif TC", serif; font-size: 15px; line-height: 1.5; }
 .nextprev .nx { text-align: right; }
 .readbar { position: fixed; left: 0; top: 0; height: 3px; width: 0; z-index: 10; background: linear-gradient(90deg, var(--gold), var(--seal)); }
+.livenote { margin-top: 10px; padding: 10px 12px; border-radius: 12px; background: rgba(176, 132, 47, .09); border: 1px dashed rgba(176, 132, 47, .4); font-size: 14px; line-height: 1.7; color: var(--ink2); }
