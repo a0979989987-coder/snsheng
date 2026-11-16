@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>加入 Snsheng 的 LINE 官方</title>
+<meta name="description" content="點開就會跳到 LINE 加好友。LINE ID：@963zmrfw">
+<meta property="og:title" content="加入 Snsheng 的 LINE 官方"><meta property="og:description" content="點開就會跳到 LINE 加好友。LINE ID：@963zmrfw">
+<meta name="theme-color" content="#15171c">
+<link rel="icon" type="image/png" href="../icon-180.png">
+<script>
+  // 放在自介欄、貼文的專用網址：一打開就跳到 LINE 加好友，路線跟網站按鈕一樣（說明在 lineadd.js）
+  // Threads、IG 裡用頁面還在讀的時候的 meta refresh 才會被接受（等讀完再用程式跳會被擋），所以在這裡直接寫進去
+  (function () {
+    var ua = navigator.userAgent, url = "https://line.me/R/ti/p/@963zmrfw", enc = encodeURIComponent;
+    var ios = /iPhone|iPad|iPod/i.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1), android = /Android/i.test(ua);
+    if (!ios && !android) return;
+    var inLine = /\bLine\//i.test(ua), th = !inLine && /Barcelona/i.test(ua), ig = !inLine && !th && /Instagram/i.test(ua);
+    var app = !inLine && (th || ig || /FBAN|FBAV|FB_IAB|FBIOS|Messenger|TikTok|musical_ly|BytedanceWebview|Twitter|MicroMessenger|Snapchat|Pinterest|; wv\)/i.test(ua));
+    var to = url;
+    if (app && android) to = "intent://ti/p/@963zmrfw#Intent;scheme=line;action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;package=jp.naver.line.android;S.browser_fallback_url=" + enc(url) + ";end";
+    else if (th) to = "barcelona://extbrowser/?url=" + enc(url);
+    else if (ig) to = "instagram://extbrowser/?url=" + enc(url);
+    else if (app) to = "x-safari-" + url;
+    window.__lineAuto = to;
+    document.write('<meta http-equiv="refresh" content="0;url=' + to.replace(/"/g, "&quot;") + '">');
+  })();
+</script>
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  body { min-height: 100svh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 28px 22px calc(28px + env(safe-area-inset-bottom)); background: radial-gradient(120% 70% at 50% 0%, #22262e, #15171c 60%); color: #efe7d6; font: 400 15px/1.7 "Noto Sans TC", system-ui, -apple-system, sans-serif; text-align: center; }
+  .av { width: 76px; height: 76px; border-radius: 50%; box-shadow: 0 0 0 2px rgba(224, 190, 116, .6), 0 10px 30px rgba(0, 0, 0, .4); }
+  h1 { margin-top: 16px; font: 700 23px/1.35 "Noto Serif TC", serif; letter-spacing: .5px; }
+  .sub { margin-top: 6px; color: #b9b2a3; font-size: 14px; }
+  .go { display: flex; align-items: center; justify-content: center; gap: 10px; width: min(360px, 100%); height: 58px; margin-top: 22px; border-radius: 16px; background: linear-gradient(180deg, #2bd96b, #06b847); color: #fff; font: 500 18px/1 "Noto Sans TC", sans-serif; letter-spacing: 1px; text-decoration: none; box-shadow: 0 10px 26px rgba(6, 184, 71, .35); }
+  .go svg { width: 26px; height: 26px; }
+  .qr { display: block; width: 168px; margin: 24px auto 0; padding: 10px; border-radius: 16px; background: #fff; box-shadow: 0 0 0 1px rgba(224, 190, 116, .5); }
+  .qr img { display: block; width: 100%; image-rendering: pixelated; }
+  .id { margin-top: 14px; font-size: 14px; color: #b9b2a3; }
+  .id button { margin-left: 6px; padding: 6px 12px; border: 1px solid rgba(255, 255, 255, .2); border-radius: 99px; background: none; color: #efe7d6; font: 500 14px/1 "Noto Sans TC", sans-serif; letter-spacing: .5px; cursor: pointer; }
+  .how { width: min(360px, 100%); margin-top: 16px; padding-left: 20px; text-align: left; font-size: 14px; color: #cfc8b8; }
+  .how li + li { margin-top: 4px; }
+  .home { margin-top: 22px; color: #8f887a; font-size: 13px; }
+</style>
+</head>
+<body data-root="../">
+  <img class="av" src="../avatar.jpg" alt="Snsheng">
+  <h1>加入 Snsheng 的 LINE 官方</h1>
+  <p class="sub">正在跳到 LINE…沒有跳過去的話，按下面的按鈕。</p>
+  <a class="go" href="https://line.me/R/ti/p/@963zmrfw" data-key="lineoa"><svg viewBox="0 0 24 24" fill="#fff" aria-hidden="true"><path d="M12 3C6.5 3 2 6.6 2 11c0 3.9 3.5 7.2 8.3 7.9.3.1.8.2.9.5.1.3.1.7 0 1l-.1.9c0 .3-.2 1 .9.5s5.9-3.5 8-6c1.5-1.6 2-3.2 2-4.8C22 6.6 17.5 3 12 3Z"/></svg>加入 LINE 官方</a>
+  <span class="qr"><img src="../media/qr-lineoa.svg" alt="LINE 官方 QR code"></span>
+  <p class="id">LINE ID <b>@963zmrfw</b><button type="button" id="cp">複製</button></p>
+  <ol class="how">
+    <li>截圖上面的 QR code，打開 LINE 的「掃描」，從相簿選這張圖。</li>
+    <li>或到 LINE 的「加入好友」搜尋 @963zmrfw。</li>
+    <li>在 Threads、IG 裡打開的話，也可以點右上角的 ⋯，選「用瀏覽器開啟」。</li>
+  </ol>
+  <a class="home" href="../">Snsheng 的網站 ›</a>
+<script src="../lineadd.js"></script>
+<script>
+  document.getElementById("cp").addEventListener("click", async function () {
+    var b = this, ok = false;
+    try { await navigator.clipboard.writeText("@963zmrfw"); ok = true; } catch (e) {
+      var t = document.createElement("textarea"); t.value = "@963zmrfw"; document.body.appendChild(t); t.select(); try { ok = document.execCommand("copy"); } catch (e2) {} t.remove();
+    }
+    b.textContent = ok ? "已複製" : "@963zmrfw"; setTimeout(function () { b.textContent = "複製"; }, 1800);
+  });
+</script>
+</body>
+</html>
