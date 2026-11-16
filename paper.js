@@ -4,7 +4,7 @@
   const body = document.body, ROOT = body.dataset.root || "../", CUR = body.dataset.page || "";
   // 網址都在這裡改；空字串＝還沒開放（按鈕先藏起來）
   const LINKS = {
-    lineoa: "https://lin.ee/pSdJA49",
+    lineoa: "https://line.me/R/ti/p/@963zmrfw",
     line: "https://line.me/ti/g2/FXj0yahd04U4JecSoC4uPInXiqhLulqdCl54Ag",
     ig: "https://www.instagram.com/btcfly/",
     threads: "https://www.threads.com/@ox.trading.ai",
@@ -136,3 +136,6 @@
     requestAnimationFrame(loop);
   }
 })();
+
+// LINE 按鈕：App 內建瀏覽器和電腦改跳 QR 面板（lineadd.js）
+(() => { const s = document.createElement("script"); s.src = (document.body.dataset.root || "../") + "lineadd.js"; document.body.appendChild(s); })();
