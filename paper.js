@@ -4,7 +4,7 @@
   const body = document.body, ROOT = body.dataset.root || "../", CUR = body.dataset.page || "";
   // 網址都在這裡改；空字串＝還沒開放（按鈕先藏起來）
   const LINKS = {
-    lineoa: "https://lin.ee/pSdJA49",
+    lineoa: "https://line.me/R/ti/p/@963zmrfw",
     line: "https://line.me/ti/g2/FXj0yahd04U4JecSoC4uPInXiqhLulqdCl54Ag",
     dc: "https://discord.gg/gKDYsUgrx",
     ig: "https://www.instagram.com/btcfly/",

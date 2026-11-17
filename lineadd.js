@@ -15,7 +15,7 @@
   const enc = encodeURIComponent;
   const lineIntent = (path, url) => `intent://${path}#Intent;scheme=line;action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;package=jp.naver.line.android;S.browser_fallback_url=${enc(url)};end`;
   const ITEMS = {
-    lineoa: { name: "LINE 官方", app: "LINE", url: "https://lin.ee/pSdJA49", id: "@963zmrfw", qr: "media/qr-lineoa.svg" },
+    lineoa: { name: "LINE 官方", app: "LINE", url: "https://line.me/R/ti/p/@963zmrfw", id: "@963zmrfw", qr: "media/qr-lineoa.svg" },
     line: { name: "LINE 社群", app: "LINE", url: "https://line.me/ti/g2/FXj0yahd04U4JecSoC4uPInXiqhLulqdCl54Ag", qr: "media/qr-line.svg" },
     dc: { name: "Discord 群組", app: "Discord", url: "https://discord.gg/gKDYsUgrx", qr: "media/qr-dc.svg" }
   };
