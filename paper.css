@@ -104,6 +104,8 @@ footer.end { max-width: 720px; margin: 0 auto; padding: 10px 20px calc(30px + en
 .talk p { color: rgba(245, 240, 230, .72); font-size: 14px; line-height: 1.8; margin-top: 6px; }
 .talk .btns { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
 .talk .btn { width: 100%; }
+.talk .btn-dc { height: 44px; background: rgba(255, 255, 255, .06); color: rgba(245, 240, 230, .82); border: 1px solid rgba(245, 240, 230, .16); font-size: 14.5px; box-shadow: none; }
+.talk .btn-dc svg { color: #8790f7; }
 .talk .btn-ghost { background: rgba(255, 255, 255, .06); color: var(--paper); border-color: rgba(245, 240, 230, .18); }
 .member {
   display: flex; align-items: center; gap: 12px; margin-top: 14px; padding: 12px 14px; border-radius: 14px;

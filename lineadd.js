@@ -1,19 +1,27 @@
-// 加 LINE 官方／LINE 社群的按鈕（有 data-key="lineoa" 或 data-key="line" 的連結都走這裡），點下去要直接跳到 LINE 的加好友畫面
+// 加 LINE 官方／LINE 社群／Discord 的按鈕（data-key 是 lineoa、line、dc 的連結都走這裡），點下去要直接跳進 App 的加入畫面
 // lin.ee 會先轉到 LINE 的「Open LINE」過渡頁，靠 line:// 叫醒 App；Threads、IG、FB 的內建瀏覽器會擋掉，過渡頁又自己退回上一頁，看起來就是點了沒反應。
+// Discord 的邀請頁在 App 內建瀏覽器裡也只會開網頁版，叫不出 Discord App。
 // 所以每種地方各用一條能走通的路，而且都要在手指點下去的那一刻發出去（晚一點發會被擋）：
-//   LINE App 裡、手機 Safari／Chrome → 直接開 https://line.me/R/... 加好友網址（同一個視窗，系統才會交給 LINE）
-//   iPhone 的 Threads → barcelona://extbrowser/?url=加好友網址（Threads 自己的「用外部開啟」，系統直接交給 LINE）
-//   iPhone 的 IG       → instagram://extbrowser/?url=加好友網址（IG 會問一次要不要離開）
-//   iPhone 的 FB、Messenger、其他 App → x-safari-https://加好友網址（轉到 Safari，再由 Safari 交給 LINE）
-//   Android 的任何 App 內建瀏覽器 → intent://...;package=LINE（直接叫 LINE App，沒裝的話開網頁）
+//   手機 Safari／Chrome → 直接開正式網址（系統會交給 LINE／Discord App）；LINE App 裡開 LINE 網址也一樣
+//   LINE App 裡開 Discord → iPhone 加 openExternalBrowser=1 轉到 Safari，Android 用 intent
+//   iPhone 的 Threads → barcelona://extbrowser/?url=正式網址（Threads 自己的「用外部開啟」，系統直接交給 App）
+//   iPhone 的 IG       → instagram://extbrowser/?url=正式網址（IG 會問一次要不要離開）
+//   iPhone 的 FB、Messenger、其他 App → x-safari-https://正式網址（轉到 Safari，再由 Safari 交給 App）
+//   Android 的任何 App 內建瀏覽器 → intent://...;package=App（直接叫 App，沒裝的話開網頁）
 //   電腦 → 直接跳 QR 面板
-// 點完 1.8 秒還留在這頁（代表沒跳走），下面會冒出「沒有跳到 LINE？」，點了是 QR、複製 ID、用瀏覽器開的面板。
+// 點完 1.8 秒還留在這頁（代表沒跳走），下面會冒出「沒有跳到 LINE？」，點了是 QR、複製、用瀏覽器開的面板。
 (() => {
   const ROOT = (document.body && document.body.dataset.root) || "";
+  const enc = encodeURIComponent;
+  const lineIntent = (path, url) => `intent://${path}#Intent;scheme=line;action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;package=jp.naver.line.android;S.browser_fallback_url=${enc(url)};end`;
   const ITEMS = {
-    lineoa: { name: "LINE 官方", url: "https://line.me/R/ti/p/@963zmrfw", path: "ti/p/@963zmrfw", id: "@963zmrfw", qr: "media/qr-lineoa.svg" },
-    line: { name: "LINE 社群", url: "https://line.me/ti/g2/FXj0yahd04U4JecSoC4uPInXiqhLulqdCl54Ag", path: "ti/g2/FXj0yahd04U4JecSoC4uPInXiqhLulqdCl54Ag", qr: "media/qr-line.svg" }
+    lineoa: { name: "LINE 官方", app: "LINE", url: "https://line.me/R/ti/p/@963zmrfw", id: "@963zmrfw", qr: "media/qr-lineoa.svg" },
+    line: { name: "LINE 社群", app: "LINE", url: "https://line.me/ti/g2/FXj0yahd04U4JecSoC4uPInXiqhLulqdCl54Ag", qr: "media/qr-line.svg" },
+    dc: { name: "Discord 群組", app: "Discord", url: "https://discord.gg/gKDYsUgrx", qr: "media/qr-dc.svg" }
   };
+  ITEMS.lineoa.intent = lineIntent("ti/p/@963zmrfw", ITEMS.lineoa.url);
+  ITEMS.line.intent = lineIntent("ti/g2/FXj0yahd04U4JecSoC4uPInXiqhLulqdCl54Ag", ITEMS.line.url);
+  ITEMS.dc.intent = `intent://discord.gg/gKDYsUgrx#Intent;scheme=https;action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;package=com.discord;S.browser_fallback_url=${enc(ITEMS.dc.url)};end`;
   window.SN_LINE = ITEMS;
   const ua = navigator.userAgent;
   const ios = /iPhone|iPad|iPod/i.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
@@ -23,29 +31,36 @@
   const inThreads = !inLine && /Barcelona/i.test(ua);
   const inIG = !inLine && !inThreads && /Instagram/i.test(ua);
   const inOtherApp = !inLine && (inThreads || inIG || /FBAN|FBAV|FB_IAB|FBIOS|Messenger|TikTok|musical_ly|BytedanceWebview|Twitter|MicroMessenger|Snapchat|Pinterest|; wv\)/i.test(ua));
-  const enc = encodeURIComponent;
 
-  // 這次要走哪一條路
+  // 這次要走哪一條路（回傳空字串＝電腦，直接給 QR）
   function route(it) {
     if (!mobile) return "";
-    if (inLine || !inOtherApp) return it.url;
-    if (android) return `intent://${it.path}#Intent;scheme=line;action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;package=jp.naver.line.android;S.browser_fallback_url=${enc(it.url)};end`;
+    if (inLine && it.app === "LINE") return it.url;
+    if (inLine) return android ? it.intent : it.url + (it.url.includes("?") ? "&" : "?") + "openExternalBrowser=1";
+    if (!inOtherApp) return it.url;
+    if (android) return it.intent;
     if (inThreads) return "barcelona://extbrowser/?url=" + enc(it.url);
     if (inIG) return "instagram://extbrowser/?url=" + enc(it.url);
     return "x-safari-" + it.url;
   }
 
-  // 先把所有按鈕的網址換成直接的加好友網址，拿掉開新視窗（長按複製到的也是對的網址）
-  const fix = () => document.querySelectorAll("a[data-key='lineoa'], a[data-key='line']").forEach(a => {
-    a.href = ITEMS[a.dataset.key].url; a.removeAttribute("target");
+  // 先把所有按鈕的網址換成正式網址，拿掉開新視窗（長按複製到的也是對的網址）
+  const SEL = "a[data-key='lineoa'], a[data-key='line'], a[data-key='dc']";
+  const fix = () => document.querySelectorAll(SEL).forEach(a => {
+    a.href = ITEMS[a.dataset.key].url; a.removeAttribute("target"); a.removeAttribute("rel");
   });
   fix(); document.addEventListener("DOMContentLoaded", fix);
 
   document.addEventListener("click", e => {
-    const a = e.target.closest && e.target.closest("a[data-key='lineoa'], a[data-key='line']");
+    const a = e.target.closest && e.target.closest(SEL);
     if (!a) return;
-    e.preventDefault(); e.stopPropagation();
-    go(a.dataset.key);
+    e.stopPropagation();
+    const key = a.dataset.key, it = ITEMS[key], u = route(it);
+    window.__lineLast = u;
+    // 走正式網址的時候讓連結自己打開（真的手指點的連結，系統才會交給 App）
+    if (u && u === it.url) { a.href = u; a.removeAttribute("target"); watch(key); return; }
+    e.preventDefault();
+    go(key);
   }, true);
 
   function go(key) {
@@ -70,6 +85,7 @@
   let sheet, bar, barT;
   function hint(key) {
     if (!sheet) build();
+    bar.innerHTML = `沒有跳到 ${ITEMS[key].app}？<b>換個方式加入 ›</b>`;
     bar.onclick = () => { bar.classList.remove("on"); open(key); };
     bar.classList.add("on");
     clearTimeout(barT); barT = setTimeout(() => bar.classList.remove("on"), 9000);
@@ -78,20 +94,32 @@
     const it = ITEMS[key];
     if (!sheet) build();
     if (bar) bar.classList.remove("on");
-    const how = mobile
+    const how = key === "dc"
+      ? (mobile
+        ? `${inOtherApp ? "<li>點右上角的 ⋯，選「用瀏覽器開啟」，再按一次加入。</li>" : ""}
+           <li>複製邀請連結，打開 Discord，按左邊的 ＋ 選「加入伺服器」，貼上連結。</li>
+           <li>還沒有 Discord 的話，先到 App Store 或 Google Play 下載，再按一次加入。</li>`
+        : `<li>用手機相機掃這個 QR code，會打開 Discord 的邀請。</li>
+           <li>或直接在電腦上打開下面的按鈕。</li>`)
+      : mobile
       ? `<li>截圖這個 QR code，打開 LINE 的「掃描」，從相簿選這張圖。</li>
          <li>${it.id ? `複製 ID，到 LINE 的「加入好友」搜尋 <b>${it.id}</b>。` : "複製連結，貼到 LINE 任何一個聊天室（自己的 Keep 筆記也可以），再點那個連結。"}</li>
          ${inOtherApp ? "<li>點右上角的 ⋯，選「用瀏覽器開啟」，再按一次加入。</li>" : ""}`
       : `<li>用手機的 LINE 掃這個 QR code。</li>
          <li>${it.id ? `或在 LINE 的「加入好友」搜尋 <b>${it.id}</b>。` : "或把連結傳到手機，在 LINE 裡點開。"}</li>`;
     sheet.querySelector(".lx-title").textContent = "加入 " + it.name;
-    sheet.querySelector(".lx-why").textContent = mobile ? "沒有跳到 LINE 的話，用下面任何一個方法加：" : "電腦打不開手機的 LINE，用手機加：";
+    sheet.querySelector(".lx-why").textContent = mobile ? `沒有跳到 ${it.app} 的話，用下面任何一個方法加：` : key === "dc" ? "用手機或電腦都可以加：" : "電腦打不開手機的 LINE，用手機加：";
     sheet.querySelector(".lx-qr img").src = ROOT + it.qr;
     sheet.querySelector(".lx-how").innerHTML = how;
     const cp = sheet.querySelector(".lx-copy");
-    cp.textContent = it.id ? "複製 ID " + it.id : "複製社群連結";
+    cp.textContent = it.id ? "複製 ID " + it.id : key === "dc" ? "複製邀請連結" : "複製社群連結";
     cp.onclick = () => copy(it.id || it.url, cp, it.id ? "ID 已複製" : "連結已複製");
-    const tr = sheet.querySelector(".lx-try"); tr.hidden = !mobile; tr.onclick = ev => { ev.preventDefault(); close(); go(key); };
+    // 手機：再走一次路線；電腦：只有 Discord 有電腦版，直接開新分頁
+    const tr = sheet.querySelector(".lx-try");
+    tr.textContent = mobile ? `還是試試直接開 ${it.app}` : "在電腦打開 Discord 邀請";
+    tr.hidden = !mobile && key !== "dc";
+    if (mobile) { tr.removeAttribute("target"); tr.onclick = ev => { ev.preventDefault(); close(); go(key); }; }
+    else { tr.href = it.url; tr.target = "_blank"; tr.rel = "noopener"; tr.onclick = null; }
     sheet.hidden = false;
     requestAnimationFrame(() => sheet.classList.add("on"));
   }
