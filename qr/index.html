@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>OX.Trading LINE 官方 QR</title>
+<meta name="description" content="掃描 QR 碼加入 OX.Trading LINE 官方">
+<meta property="og:title" content="OX.Trading LINE 官方 QR">
+<meta property="og:description" content="掃描 QR 碼加入 OX.Trading LINE 官方">
+<meta property="og:image" content="https://a0979989987-coder.github.io/snsheng/qr/ox-line-oa-qr-card.png">
+<meta name="theme-color" content="#09131e">
+<link rel="icon" type="image/png" href="../icon-180.png">
+<link rel="apple-touch-icon" href="../icon-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@1,500&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="preload" as="image" href="line-oa-qr.png">
+<style>
+  /* 顏色跟首頁深色那一半一樣（site.js 的 PAL.dark） */
+  :root {
+    --bgA: #09131e; --bgB: #0f1e2e;
+    --fg: #efe7d6; --fg2: #a8b6c6; --fg3: #7a8a9c;
+    --card: rgba(16, 30, 46, .66); --cardline: rgba(241, 234, 220, .14);
+    --gold: #e0be74; --glow: rgba(9, 19, 30, .9);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { overflow-x: hidden; overscroll-behavior: none; -webkit-text-size-adjust: 100%; }
+  html, body { touch-action: pan-y; }
+  body {
+    min-height: 100svh; color: var(--fg); background: var(--bgA);
+    font-family: "Noto Sans TC", -apple-system, BlinkMacSystemFont, "PingFang TC", "Microsoft JhengHei", sans-serif;
+    -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent; overflow-x: clip;
+  }
+  #bgfix { position: fixed; inset: 0; z-index: 0; background: linear-gradient(180deg, var(--bgA), var(--bgB)); }
+  #gl { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; display: block; }
+  main {
+    position: relative; z-index: 3; min-height: 100svh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
+    padding: calc(28px + env(safe-area-inset-top)) 22px calc(28px + env(safe-area-inset-bottom));
+  }
+  .name { font-family: "EB Garamond", Georgia, serif; font-style: italic; font-weight: 500; font-size: 30px; line-height: 1.1; text-shadow: 0 0 18px var(--glow); }
+  .sub { margin-top: 6px; font-size: 13px; letter-spacing: 4px; color: var(--gold); text-shadow: 0 0 10px var(--glow), 0 0 4px var(--glow), 0 0 2px var(--glow); }
+
+  /* QR：白底大方框，外面一圈跟首頁頭像一樣慢慢轉的金藍光環 */
+  .qr { position: relative; width: min(78vw, 340px); aspect-ratio: 1; margin-top: 22px; animation: rise .9s cubic-bezier(.2, .9, .3, 1.2) both .15s; }
+  .qr .ring {
+    position: absolute; inset: -12px; border-radius: 34px; pointer-events: none;
+    background: conic-gradient(from var(--a, 0deg), rgba(201, 158, 69, 0), rgba(201, 158, 69, .95) 22%, rgba(201, 158, 69, 0) 40%, rgba(127, 166, 214, 0) 55%, rgba(127, 166, 214, .85) 75%, rgba(127, 166, 214, 0) 92%);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
+            mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+    padding: 2px; animation: spin 6s linear infinite;
+  }
+  @property --a { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+  @keyframes spin { to { --a: 360deg; } }
+  .qr .box {
+    position: absolute; inset: 0; border-radius: 26px; background: #fff; padding: 4%; overflow: hidden;
+    box-shadow: 0 0 0 1px rgba(224, 190, 116, .55), 0 18px 50px rgba(0, 0, 0, .5), 0 0 90px rgba(233, 200, 120, .35);
+    transition: transform .18s;
+  }
+  .qr.press .box { transform: scale(.96); }
+  /* 圖片本身不擋長按：長按才會出現「儲存影像」「掃描 QR 碼」 */
+  .qr img { display: block; width: 100%; height: 100%; image-rendering: pixelated; -webkit-touch-callout: default; -webkit-user-select: auto; user-select: auto; cursor: pointer; }
+  /* 光澤偶爾掃過一次 */
+  .qr .box::after {
+    content: ""; position: absolute; inset: -40%; pointer-events: none;
+    background: linear-gradient(115deg, transparent 42%, rgba(255, 236, 190, .35) 50%, transparent 58%);
+    transform: translateX(-70%); animation: sheen 5.5s ease-in-out infinite 1.4s;
+  }
+  @keyframes sheen { 0% { transform: translateX(-70%); } 22%, 100% { transform: translateX(70%); } }
+  @keyframes rise { from { opacity: 0; transform: translateY(18px) scale(.94); } to { opacity: 1; transform: none; } }
+
+  .label { margin-top: 26px; font-size: 19px; font-weight: 700; letter-spacing: 2px; text-shadow: 0 0 14px var(--glow), 0 0 4px var(--glow); }
+  .label b { color: #2bdc74; }
+  .hint { margin-top: 8px; max-width: 320px; font-size: 14px; line-height: 1.7; color: var(--fg2); text-shadow: 0 0 10px var(--glow), 0 0 3px var(--glow); }
+  .rise { animation: rise .8s cubic-bezier(.2, .9, .3, 1.1) both; }
+
+  /* 儲存按鈕：首頁 LINE 官方按鈕的立體綠，光澤掃過、底下一圈呼吸的綠光 */
+  .save {
+    position: relative; display: flex; align-items: center; justify-content: center; gap: 10px;
+    width: min(78vw, 340px); height: 58px; margin-top: 22px; border: 0; border-radius: 18px; overflow: hidden; cursor: pointer;
+    background: linear-gradient(180deg, #2be07f 0%, #08c957 48%, #03a948 100%); color: #fff;
+    font: 500 17px/1 "Noto Sans TC", sans-serif; letter-spacing: 1px; text-shadow: 0 1px 2px rgba(0, 70, 25, .35);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .55), inset 0 -3px 8px rgba(0, 70, 25, .3), 0 10px 28px rgba(6, 199, 85, .35);
+    animation: rise .8s cubic-bezier(.2, .9, .3, 1.1) both .35s, breathe 3.2s ease-in-out infinite 1.2s;
+    touch-action: manipulation; -webkit-user-select: none; user-select: none;
+  }
+  .save svg { width: 22px; height: 22px; }
+  .save:active { transform: scale(.97); }
+  .save::after { content: ""; position: absolute; inset: 0; background: linear-gradient(110deg, transparent 35%, rgba(255, 255, 255, .45) 50%, transparent 65%); transform: translateX(-120%); animation: sheen2 4.6s ease-in-out infinite 2s; }
+  @keyframes sheen2 { 0% { transform: translateX(-120%); } 25%, 100% { transform: translateX(120%); } }
+  @keyframes breathe { 50% { box-shadow: inset 0 1px 0 rgba(255, 255, 255, .55), inset 0 -3px 8px rgba(0, 70, 25, .3), 0 10px 40px rgba(6, 199, 85, .6); } }
+
+  .toast {
+    position: fixed; z-index: 9; left: 50%; bottom: calc(26px + env(safe-area-inset-bottom)); transform: translate(-50%, 20px); opacity: 0; pointer-events: none;
+    max-width: 88vw; padding: 10px 16px; border-radius: 99px; background: var(--card); border: 1px solid var(--cardline); color: var(--fg);
+    font-size: 14px; line-height: 1.5; -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); transition: opacity .25s, transform .25s;
+  }
+  .toast.on { opacity: 1; transform: translate(-50%, 0); }
+
+  /* 存不了的時候：整張卡片全螢幕給他長按 */
+  .full { position: fixed; inset: 0; z-index: 8; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 24px; background: rgba(4, 8, 16, .92); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+  .full.on { display: flex; }
+  .full img { max-width: 100%; max-height: 76svh; border-radius: 18px; -webkit-touch-callout: default; -webkit-user-select: auto; user-select: auto; box-shadow: 0 20px 60px rgba(0, 0, 0, .6); }
+  .full p { font-size: 16px; letter-spacing: 1px; color: var(--fg); }
+  .full button { padding: 10px 22px; border: 1px solid var(--cardline); border-radius: 99px; background: var(--card); color: var(--fg); font: 500 15px/1 "Noto Sans TC", sans-serif; cursor: pointer; }
+</style>
+</head>
+<body>
+<div id="bgfix" aria-hidden="true"></div>
+<canvas id="gl" aria-hidden="true"></canvas>
+
+<main>
+  <div class="name rise">Snsheng</div>
+  <div class="qr" id="qr">
+    <span class="ring" aria-hidden="true"></span>
+    <div class="box"><img src="line-oa-qr.png" width="1024" height="1024" alt="OX.Trading LINE 官方 QR code" id="qrimg"></div>
+  </div>
+  <p class="label rise" style="animation-delay:.25s">OX.Trading <b>LINE</b> 官方</p>
+  <p class="hint rise" style="animation-delay:.3s" id="hint">長按 QR 選「掃描 QR 碼」，或點一下 QR 加入</p>
+  <button class="save" type="button" id="save">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7.5 10.5 12 15l4.5-4.5"/><path d="M5 19h14"/></svg>
+    儲存 QR 圖片
+  </button>
+</main>
+
+<div class="full" id="full" role="dialog" aria-label="QR 圖片">
+  <img src="ox-line-oa-qr-card.png" alt="OX.Trading LINE 官方 QR 圖片">
+  <p>長按圖片即可儲存</p>
+  <button type="button" id="close">關閉</button>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function () {
+  var OA = "https://line.me/R/ti/p/@963zmrfw", SCHEME = "line://ti/p/@963zmrfw", ID = "ti/p/@963zmrfw", CARD = "ox-line-oa-qr-card.png";
+  var enc = encodeURIComponent, ua = navigator.userAgent;
+  var ios = /iPhone|iPad|iPod/i.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  var android = /Android/i.test(ua), mobile = ios || android;
+  var inLine = /\bLine\//i.test(ua), inThreads = !inLine && /Barcelona/i.test(ua), inIG = !inLine && !inThreads && /Instagram/i.test(ua);
+  var inOtherApp = !inLine && (inThreads || inIG || /FBAN|FBAV|FB_IAB|FBIOS|Messenger|TikTok|musical_ly|BytedanceWebview|Twitter|MicroMessenger|Snapchat|Pinterest|; wv\)/i.test(ua));
+  var inApp = inLine || inOtherApp;
+  var intent = "intent://" + ID + "#Intent;scheme=line;action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;package=jp.naver.line.android;S.browser_fallback_url=" + enc(OA) + ";end";
+
+  var toastEl = document.getElementById("toast"), tt;
+  function say(m, ms) { toastEl.textContent = m; toastEl.classList.add("on"); clearTimeout(tt); tt = setTimeout(function () { toastEl.classList.remove("on"); }, ms || 2200); }
+  if (!mobile) document.getElementById("hint").textContent = "用手機 LINE 的「掃描」掃這個 QR 加入";
+
+  // 跟 ../lineadd.js 一樣的路線（LINE 以外的地方）
+  function route() {
+    if (!inOtherApp) return OA;
+    if (android) return intent;
+    if (inThreads) return "barcelona://extbrowser/?url=" + enc(OA);
+    if (inIG) return "instagram://extbrowser/?url=" + enc(OA);
+    return "x-safari-" + OA;
+  }
+
+  // 點一下 QR：不是連結，是程式在點下去那一刻發出去
+  //   LINE 裡（含社群）：先用 line://ti/p/@963zmrfw 叫 LINE 自己的加好友畫面（希望不走官方帳號 MINI App，未實測）
+  //                      1.5 秒後這頁還在前面（沒跳走），再改開 https://line.me/R/ti/p/@963zmrfw
+  //   其他手機瀏覽器、Threads、IG、FB：照 lineadd.js 的路線
+  //   電腦：不做事，QR 已經在畫面上
+  var qr = document.getElementById("qr"), img = document.getElementById("qrimg"), pending = 0, left = false;
+  function markLeft() { left = true; clearTimeout(pending); }
+  addEventListener("pagehide", markLeft);
+  addEventListener("blur", markLeft);
+  document.addEventListener("visibilitychange", function () { if (document.hidden) markLeft(); });
+  img.addEventListener("contextmenu", function (e) { e.stopPropagation(); });   // 不攔長按選單
+  img.addEventListener("click", function () {
+    qr.classList.add("press"); setTimeout(function () { qr.classList.remove("press"); }, 180);
+    if (window.SN_COSMOS_KICK) window.SN_COSMOS_KICK();
+    if (!mobile) { say("請用手機 LINE 掃描這個 QR"); return; }
+    if (inLine) {
+      left = false; clearTimeout(pending);
+      location.href = SCHEME;
+      pending = setTimeout(function () {
+        if (left || document.hidden) return;
+        location.href = OA;
+        setTimeout(function () { if (!document.hidden) say("沒有跳出加入畫面的話，請長按 QR 選「掃描 QR 碼」", 4200); }, 1500);
+      }, 1500);
+      return;
+    }
+    location.href = route();
+  });
+
+  // 儲存：先把卡片圖抓下來放著，點的時候直接分享（等下載完再分享會被瀏覽器擋）
+  var cardFile = null;
+  fetch(CARD).then(function (r) { return r.blob(); }).then(function (b) {
+    try { cardFile = new File([b], "OX-Trading-LINE-QR.png", { type: "image/png" }); } catch (e) {}
+  }).catch(function () {});
+  var full = document.getElementById("full");
+  function showFull() { full.classList.add("on"); }
+  document.getElementById("close").addEventListener("click", function () { full.classList.remove("on"); });
+  full.addEventListener("click", function (e) { if (e.target === full) full.classList.remove("on"); });
+  document.getElementById("save").addEventListener("click", function () {
+    if (cardFile && navigator.canShare && navigator.share) {
+      var data = { files: [cardFile] };
+      var ok = false; try { ok = navigator.canShare(data); } catch (e) {}
+      if (ok) {
+        navigator.share(data).then(function () {}).catch(function (err) {
+          if (!err || err.name !== "AbortError") showFull();
+        });
+        return;
+      }
+    }
+    var a = document.createElement("a");
+    if (!inApp && "download" in a) {
+      a.href = CARD; a.download = "OX-Trading-LINE-QR.png"; document.body.appendChild(a); a.click(); a.remove();
+      say("已下載 QR 圖片");
+      return;
+    }
+    showFull();
+  });
+})();
+</script>
+<script type="module" src="cosmos.js"></script>
+</body>
+</html>
